@@ -1,4 +1,5 @@
 import asyncio
+from unittest.mock import AsyncMock, patch
 
 from app.providers.base import GenerationRequest, ProviderResult
 from app.providers.mock_provider import MockProvider
@@ -36,3 +37,14 @@ def test_mock_provider_has_routing_metadata() -> None:
 
     assert metadata.available is True
     assert metadata.identity == "mock:mock-model"
+
+
+def test_mock_provider_uses_async_configured_latency() -> None:
+    provider = MockProvider(latency_ms=50)
+
+    with patch(
+        "app.providers.mock_provider.asyncio.sleep", new_callable=AsyncMock
+    ) as sleep:
+        generate(provider)
+
+    sleep.assert_awaited_once_with(0.05)

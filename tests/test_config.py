@@ -26,3 +26,13 @@ def test_database_url_has_safe_local_postgresql_default(monkeypatch) -> None:
     settings = Settings(_env_file=None)
 
     assert settings.database_url.startswith("postgresql+asyncpg://")
+
+
+def test_mock_latency_defaults_to_zero_and_is_environment_configurable(
+    monkeypatch,
+) -> None:
+    monkeypatch.delenv("MOCK_PROVIDER_LATENCY_MS", raising=False)
+    assert Settings(_env_file=None).mock_provider_latency_ms == 0
+
+    monkeypatch.setenv("MOCK_PROVIDER_LATENCY_MS", "50")
+    assert Settings(_env_file=None).mock_provider_latency_ms == 50

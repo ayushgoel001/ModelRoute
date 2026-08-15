@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     modelroute_app_name: str = "ModelRoute"
     modelroute_app_env: str = "development"
     modelroute_mock_model: str = "mock-model"
+    mock_provider_latency_ms: float = Field(default=0.0, ge=0)
 
     openai_api_key: SecretStr | None = None
     openai_model: str = "gpt-5.6-luna"

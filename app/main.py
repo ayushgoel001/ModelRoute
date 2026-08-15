@@ -45,7 +45,10 @@ def _build_providers(settings: Settings) -> list[BaseProvider]:
             input_cost_per_million=settings.gemini_input_cost_per_million,
             output_cost_per_million=settings.gemini_output_cost_per_million,
         ),
-        MockProvider(model=settings.mock_model),
+        MockProvider(
+            model=settings.mock_model,
+            latency_ms=settings.mock_provider_latency_ms,
+        ),
     ]
 
 

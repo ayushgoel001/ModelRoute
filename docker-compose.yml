@@ -1,0 +1,66 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      MODELROUTE_APP_ENV: compose
+      MODELROUTE_MOCK_MODEL: mock-model
+      MOCK_PROVIDER_LATENCY_MS: "${MOCK_PROVIDER_LATENCY_MS:-0}"
+      DEFAULT_PROVIDER: "${MODELROUTE_COMPOSE_DEFAULT_PROVIDER:-mock}"
+      PROVIDER_TIMEOUT_SECONDS: "${PROVIDER_TIMEOUT_SECONDS:-20}"
+      PROVIDER_MAX_RETRIES: "${PROVIDER_MAX_RETRIES:-1}"
+      PROVIDER_RETRY_DELAY_SECONDS: "${PROVIDER_RETRY_DELAY_SECONDS:-0.25}"
+      REDIS_URL: redis://redis:6379/0
+      DATABASE_URL: postgresql+asyncpg://modelroute:modelroute@postgres:5432/modelroute
+      CACHE_TTL_SECONDS: "${CACHE_TTL_SECONDS:-300}"
+      RATE_LIMIT_CAPACITY: "${RATE_LIMIT_CAPACITY:-20}"
+      RATE_LIMIT_REFILL_RATE: "${RATE_LIMIT_REFILL_RATE:-1}"
+      OPENAI_API_KEY: "${MODELROUTE_COMPOSE_OPENAI_API_KEY:-}"
+      GEMINI_API_KEY: "${MODELROUTE_COMPOSE_GEMINI_API_KEY:-}"
+    ports:
+      - "${API_PORT:-8000}:8000"
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=2)"
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 10s
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 3s
+      timeout: 2s
+      retries: 15
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: modelroute
+      POSTGRES_USER: modelroute
+      POSTGRES_PASSWORD: modelroute
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U modelroute -d modelroute"]
+      interval: 3s
+      timeout: 3s
+      retries: 15
+
+volumes:
+  postgres_data:

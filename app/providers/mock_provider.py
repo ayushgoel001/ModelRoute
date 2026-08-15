@@ -1,3 +1,4 @@
+import asyncio
 import re
 from typing import Mapping
 
@@ -26,7 +27,11 @@ class MockProvider(BaseProvider):
         available: bool = True,
         input_cost_per_million: float = 0.0,
         output_cost_per_million: float = 0.0,
+        latency_ms: float = 0.0,
     ) -> None:
+        if latency_ms < 0:
+            raise ValueError("latency_ms must be non-negative")
+        self.latency_seconds = latency_ms / 1_000
         self.metadata = ProviderMetadata(
             name="mock",
             model=model,
@@ -42,6 +47,8 @@ class MockProvider(BaseProvider):
         return {}
 
     async def generate(self, request: GenerationRequest) -> ProviderResult:
+        if self.latency_seconds:
+            await asyncio.sleep(self.latency_seconds)
         normalized_prompt = request.prompt.strip()
         content = f"Mock response: {normalized_prompt}"
         return ProviderResult(
