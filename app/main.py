@@ -1,12 +1,16 @@
 from collections.abc import Iterable
 from contextlib import asynccontextmanager
+import logging
 from typing import Any
 
 from fastapi import FastAPI
 from redis import asyncio as redis_async
+from sqlalchemy.exc import SQLAlchemyError
 
+from app.api.metrics_routes import router as metrics_router
 from app.api.routes import router
 from app.config import Settings, get_settings
+from app.db.database import Database
 from app.providers.base import BaseProvider
 from app.providers.gemini_provider import GeminiProvider
 from app.providers.mock_provider import MockProvider
@@ -14,8 +18,11 @@ from app.providers.openai_provider import OpenAIProvider
 from app.services.cache import ResponseCache
 from app.services.completion_service import CompletionService
 from app.services.latency import LatencyTracker
+from app.services.metrics import MetricsService
 from app.services.rate_limiter import TokenBucketRateLimiter
 from app.services.router import ProviderRouter
+
+logger = logging.getLogger(__name__)
 
 
 def _secret_value(secret: Any | None) -> str | None:
@@ -47,6 +54,8 @@ def create_app(
     *,
     redis_client: Any | None = None,
     providers: Iterable[BaseProvider] | None = None,
+    database: Database | None = None,
+    metrics_service: MetricsService | None = None,
 ) -> FastAPI:
     resolved_settings = settings or get_settings()
     owns_redis_client = redis_client is None
@@ -55,6 +64,15 @@ def create_app(
         decode_responses=True,
     )
     configured_providers = list(providers or _build_providers(resolved_settings))
+    owns_database = database is None and metrics_service is None
+    shared_database = database
+    if shared_database is None and metrics_service is None:
+        shared_database = Database(resolved_settings.database_url)
+    if metrics_service is None:
+        assert shared_database is not None
+        resolved_metrics = MetricsService(shared_database.session_factory)
+    else:
+        resolved_metrics = metrics_service
     latency_tracker = LatencyTracker(
         alpha=resolved_settings.latency_ewma_alpha,
         initial_latency_ms=resolved_settings.initial_provider_latency_ms,
@@ -80,15 +98,26 @@ def create_app(
         latency_tracker=latency_tracker,
         max_retries=resolved_settings.provider_max_retries,
         retry_delay_seconds=resolved_settings.provider_retry_delay_seconds,
+        metrics=resolved_metrics,
     )
 
     @asynccontextmanager
     async def lifespan(application: FastAPI):
+        if shared_database is not None:
+            try:
+                await shared_database.initialize()
+            except (SQLAlchemyError, OSError) as exc:
+                logger.error(
+                    "Metrics schema initialization failed (%s); gateway will continue",
+                    type(exc).__name__,
+                )
         yield
         if owns_redis_client:
             await shared_redis.aclose()
         for provider in configured_providers:
             await provider.close()
+        if owns_database and shared_database is not None:
+            await shared_database.close()
 
     application = FastAPI(title=resolved_settings.app_name, lifespan=lifespan)
     application.state.settings = resolved_settings
@@ -96,8 +125,11 @@ def create_app(
     application.state.providers = configured_providers
     application.state.latency_tracker = latency_tracker
     application.state.completion_service = completion_service
+    application.state.metrics_service = resolved_metrics
+    application.state.database = shared_database
     application.state.rate_limiter = rate_limiter
     application.include_router(router)
+    application.include_router(metrics_router)
     return application
 
 

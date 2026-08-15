@@ -1,4 +1,5 @@
 from typing import Annotated
+from time import perf_counter
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 
@@ -42,6 +43,7 @@ async def create_completion(
     service: Annotated[CompletionService, Depends(get_completion_service)],
     rate_limiter: Annotated[TokenBucketRateLimiter, Depends(get_rate_limiter)],
 ) -> ChatCompletionResponse:
+    started_at = perf_counter()
     try:
         allowed = await rate_limiter.allow(client_identity(request))
     except RateLimiterUnavailableError as exc:
@@ -56,7 +58,7 @@ async def create_completion(
         )
 
     try:
-        return await service.complete(completion_request)
+        return await service.complete(completion_request, started_at=started_at)
     except (NoEligibleProviderError, AllProvidersFailedError) as exc:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,

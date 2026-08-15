@@ -1,6 +1,6 @@
 # ModelRoute
 
-ModelRoute is a modular FastAPI LLM gateway. Phase 2 implements the core request lifecycle: provider routing, bounded resilience, exact Redis caching, and shared token-bucket rate limiting.
+ModelRoute is a modular FastAPI LLM gateway. Phase 3 adds PostgreSQL request observability, a metrics API, and a minimal server-rendered dashboard to the existing routing, resilience, caching, and rate-limiting lifecycle.
 
 ## Request lifecycle
 
@@ -13,6 +13,7 @@ Client
   -> provider timeout/retry
   -> fallback candidate when needed
   -> cache successful result
+  -> persist one privacy-minimized request metric
   -> normalized response
 ```
 
@@ -26,6 +27,8 @@ The gateway exposes:
 - Normalized provider errors and usage metadata
 - Redis exact-response caching with SHA-256 identities and TTL
 - Redis token-bucket rate limiting with an atomic Lua state transition
+- PostgreSQL request metrics using SQLAlchemy's async APIs and asyncpg
+- `GET /v1/metrics/summary`, `GET /v1/metrics/recent`, and `GET /dashboard`
 
 ## Provider adapters and capabilities
 
@@ -59,6 +62,26 @@ Cache Redis errors fail open because caching is an optimization. Rate-limit Redi
 
 The rate limiter uses `X-Client-ID` when supplied, otherwise the request client address. Identities are normalized and SHA-256 hashed before use in Redis keys. Each accepted request consumes one token, tokens refill continuously, and exhausted buckets return HTTP `429`. The Lua script atomically refills, consumes, persists state, and applies an abandonment TTL.
 
+## PostgreSQL observability
+
+Each completion that reaches the completion service produces one request-level metrics row for a normal success, cache hit, fallback success, or terminal provider failure. It records the gateway request ID, UTC timestamp, provider/model when successful, routing strategy, normalized status/error category, total gateway latency, normalized token counts, estimated cost, and cache/fallback flags.
+
+Raw prompts and generated response content are intentionally never persisted. This data-minimization rule is enforced by the database model and tests. API keys and raw exception details are also absent from metrics.
+
+Estimated successful-generation cost is calculated from configured provider metadata:
+
+```text
+(input tokens × input price per million + output tokens × output price per million) / 1,000,000
+```
+
+A cache hit costs `$0` for the current gateway request because it makes no new external model call, although its cached token counts remain visible. Estimates do not claim to match invoices exactly, and failed attempts may incur provider-side charges that cannot be represented when billed usage is unknown.
+
+Metric insert failures fail open: the gateway logs only a safe database error category and still returns a successful completion. Metrics API and dashboard reads fail with HTTP `503` when PostgreSQL is unavailable because those endpoints cannot otherwise fulfill their purpose.
+
+`GET /v1/metrics/summary` returns totals, success/cache rates, fallback and token counts, estimated cost, average latency, PostgreSQL `percentile_cont` p50/p95 latency, and provider/model breakdowns. `GET /v1/metrics/recent` returns at most 100 privacy-safe rows (20 by default). `/dashboard` displays the same key indicators, provider usage, and recent requests with local CSS and no frontend build step or CDN.
+
+The request ID is unique; timestamp, provider, and status have focused indexes for recent dashboard reads, provider grouping, and success/error filtering. Startup only creates missing tables with `create_all`; it never drops or recreates data. A production system would normally manage later schema changes with Alembic or another migration tool.
+
 ## Install
 
 Python 3.11 or newer is required.
@@ -91,6 +114,7 @@ PROVIDER_TIMEOUT_SECONDS=20
 PROVIDER_MAX_RETRIES=1
 PROVIDER_RETRY_DELAY_SECONDS=0.25
 REDIS_URL=redis://localhost:6379/0
+DATABASE_URL=postgresql+asyncpg://modelroute:modelroute@localhost:5432/modelroute
 CACHE_TTL_SECONDS=300
 RATE_LIMIT_CAPACITY=20
 RATE_LIMIT_REFILL_RATE=1.0
@@ -98,13 +122,15 @@ RATE_LIMIT_REFILL_RATE=1.0
 
 ## Run
 
-Start Redis separately, then run:
+Start Redis and PostgreSQL separately, create the configured database/user if needed, then run:
 
 ```powershell
 uvicorn app.main:app --reload
 ```
 
 API documentation is available at `http://127.0.0.1:8000/docs`.
+
+The application creates the missing `request_metrics` table on startup. PostgreSQL unavailability does not make module import fail; a startup initialization failure is logged safely, completion traffic can continue, and metrics reads return `503` until the database is restored.
 
 Example request:
 
@@ -132,15 +158,17 @@ Ordinary tests mock provider and Redis boundaries and make no paid or external c
 python -m pytest
 ```
 
-Live provider smoke checks and real Redis/Lua verification are separate manual verification steps.
+Ordinary tests use controlled in-process boundaries. Live provider checks and PostgreSQL-specific `percentile_cont` verification are separate manual verification steps; SQLite is not used as proof of PostgreSQL SQL behavior.
 
 ## Current limitations
 
-- PostgreSQL metrics and persistent observability are not implemented.
-- The metrics dashboard is not implemented.
 - The final Dockerfile and Docker Compose environment are not implemented.
 - Benchmarking and load generation are not implemented.
 - Fastest-routing latency history is process-local and needs shared aggregation when horizontally scaled.
 - Configured pricing metadata can become stale and must be maintained.
 - Pre-generation routing cost is only an estimate.
-- Streaming, authentication, semantic caching, and circuit breakers are outside Phase 2.
+- Estimated metrics cost is based on configured prices; unknown billing from failed provider attempts is omitted.
+- The dashboard is intentionally minimal and has no charts or authentication.
+- OpenAI successful live inference remains unverified because API account credit was not added.
+- Gemini live inference was successfully verified in Phase 2.
+- Streaming, authentication, semantic caching, and circuit breakers remain out of scope.

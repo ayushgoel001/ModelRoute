@@ -28,6 +28,9 @@ class Settings(BaseSettings):
     provider_retry_delay_seconds: float = Field(default=0.25, ge=0)
 
     redis_url: str = "redis://localhost:6379/0"
+    database_url: str = (
+        "postgresql+asyncpg://modelroute:modelroute@localhost:5432/modelroute"
+    )
     cache_ttl_seconds: int = Field(default=300, gt=0)
     rate_limit_capacity: int = Field(default=20, gt=0)
     rate_limit_refill_rate: float = Field(default=1.0, gt=0)

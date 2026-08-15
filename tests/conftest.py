@@ -14,6 +14,7 @@ from app.providers.base import (
     ProviderMetadata,
     ProviderResult,
 )
+from app.services.metrics import MetricsService
 
 
 class FakeRedis:
@@ -111,6 +112,61 @@ class FakeProvider(BaseProvider):
         )
 
 
+class FakeMetricsService:
+    def __init__(self) -> None:
+        self.records: list[dict[str, Any]] = []
+        self.fail_writes = False
+
+    async def record_success(self, response, *, routing_strategy, provider) -> bool:
+        if self.fail_writes:
+            return False
+        self.records.append(
+            {
+                "request_id": response.request_id,
+                "provider": response.provider,
+                "model": response.model,
+                "routing_strategy": routing_strategy,
+                "status": "success",
+                "latency_ms": response.latency_ms,
+                "input_tokens": response.input_tokens,
+                "output_tokens": response.output_tokens,
+                "estimated_cost_usd": MetricsService.estimate_cost(
+                    input_tokens=response.input_tokens,
+                    output_tokens=response.output_tokens,
+                    provider=provider,
+                    cache_hit=response.cache_hit,
+                ),
+                "cache_hit": response.cache_hit,
+                "fallback_used": response.fallback_used,
+                "error_category": None,
+            }
+        )
+        return True
+
+    async def record_failure(
+        self, *, request_id, routing_strategy, latency_ms, error_category
+    ) -> bool:
+        if self.fail_writes:
+            return False
+        self.records.append(
+            {
+                "request_id": request_id,
+                "provider": None,
+                "model": None,
+                "routing_strategy": routing_strategy,
+                "status": "error",
+                "latency_ms": latency_ms,
+                "input_tokens": 0,
+                "output_tokens": 0,
+                "estimated_cost_usd": 0,
+                "cache_hit": False,
+                "fallback_used": False,
+                "error_category": error_category,
+            }
+        )
+        return True
+
+
 def provider_result(name: str, model: str | None = None) -> ProviderResult:
     return ProviderResult(
         content=f"{name} response",
@@ -150,6 +206,7 @@ def app_factory():
         max_retries: int = 1,
         capacity: int = 20,
         refill_rate: float = 1.0,
+        metrics_service: Any | None = None,
     ):
         settings = Settings(
             default_provider=default_provider,
@@ -162,6 +219,7 @@ def app_factory():
             settings,
             redis_client=redis_client or FakeRedis(),
             providers=providers or [FakeProvider("mock")],
+            metrics_service=metrics_service or FakeMetricsService(),
         )
 
     return build

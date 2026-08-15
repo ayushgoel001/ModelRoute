@@ -18,3 +18,11 @@ def test_gemini_pricing_remains_environment_configurable(monkeypatch) -> None:
 
     assert settings.gemini_input_cost_per_million == 1.25
     assert settings.gemini_output_cost_per_million == 6.25
+
+
+def test_database_url_has_safe_local_postgresql_default(monkeypatch) -> None:
+    monkeypatch.delenv("DATABASE_URL", raising=False)
+
+    settings = Settings(_env_file=None)
+
+    assert settings.database_url.startswith("postgresql+asyncpg://")

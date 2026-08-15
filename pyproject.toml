@@ -9,12 +9,15 @@ description = "Core LLM gateway with routing, resilience, caching, and rate limi
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
+    "asyncpg>=0.30,<1.0",
     "fastapi>=0.115,<1.0",
     "google-genai==2.18.1",
+    "jinja2>=3.1,<4.0",
     "openai>=3.0,<4.0",
     "pydantic>=2.9,<3.0",
     "pydantic-settings>=2.6,<3.0",
     "redis>=8.0,<9.0",
+    "sqlalchemy[asyncio]>=2.0,<3.0",
     "uvicorn[standard]>=0.30,<1.0",
 ]
 

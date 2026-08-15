@@ -14,6 +14,10 @@ class RateLimiterUnavailableError(GatewayError):
     pass
 
 
+class MetricsUnavailableError(GatewayError):
+    pass
+
+
 class ProviderError(GatewayError):
     retryable = False
 

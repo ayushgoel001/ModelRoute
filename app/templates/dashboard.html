@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ModelRoute metrics</title>
+  <style>
+    :root { color-scheme: light; font-family: Inter, system-ui, sans-serif; color: #172033; background: #f5f7fb; }
+    body { margin: 0; padding: 2rem; }
+    main { max-width: 1200px; margin: auto; }
+    h1 { margin: 0 0 .25rem; } .subtitle { color: #667085; margin: 0 0 1.5rem; }
+    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: .9rem; }
+    .card, section { background: white; border: 1px solid #e4e7ec; border-radius: .7rem; box-shadow: 0 1px 2px #1018280d; }
+    .card { padding: 1rem; } .label { color: #667085; font-size: .8rem; } .value { font-size: 1.45rem; font-weight: 650; margin-top: .35rem; }
+    section { margin-top: 1.25rem; padding: 1rem; overflow-x: auto; } h2 { font-size: 1.05rem; margin-top: 0; }
+    table { width: 100%; border-collapse: collapse; font-size: .86rem; }
+    th, td { padding: .65rem; text-align: left; border-bottom: 1px solid #eaecf0; white-space: nowrap; }
+    th { color: #475467; font-weight: 600; } .empty { color: #667085; }
+  </style>
+</head>
+<body><main>
+  <h1>ModelRoute</h1><p class="subtitle">Request observability</p>
+  <div class="cards">
+    <div class="card"><div class="label">Total Requests</div><div class="value">{{ summary.total_requests }}</div></div>
+    <div class="card"><div class="label">Success Rate</div><div class="value">{{ '%.1f'|format(summary.success_rate * 100) }}%</div></div>
+    <div class="card"><div class="label">Cache Hit Rate</div><div class="value">{{ '%.1f'|format(summary.cache_hit_rate * 100) }}%</div></div>
+    <div class="card"><div class="label">p50 Latency</div><div class="value">{{ '%.1f'|format(summary.p50_latency_ms) }} ms</div></div>
+    <div class="card"><div class="label">p95 Latency</div><div class="value">{{ '%.1f'|format(summary.p95_latency_ms) }} ms</div></div>
+    <div class="card"><div class="label">Estimated Cost</div><div class="value">${{ '%.6f'|format(summary.estimated_cost_usd) }}</div></div>
+    <div class="card"><div class="label">Fallback Count</div><div class="value">{{ summary.fallback_count }}</div></div>
+    <div class="card"><div class="label">Input Tokens</div><div class="value">{{ summary.input_tokens }}</div></div>
+    <div class="card"><div class="label">Output Tokens</div><div class="value">{{ summary.output_tokens }}</div></div>
+  </div>
+  <section><h2>Provider usage</h2>
+    <table><thead><tr><th>Provider</th><th>Model</th><th>Requests</th><th>Successes</th><th>Avg latency</th><th>Tokens in/out</th><th>Estimated cost</th></tr></thead><tbody>
+    {% for item in summary.providers %}<tr><td>{{ item.provider }}</td><td>{{ item.model }}</td><td>{{ item.request_count }}</td><td>{{ item.success_count }}</td><td>{{ '%.1f'|format(item.average_latency_ms) }} ms</td><td>{{ item.input_tokens }} / {{ item.output_tokens }}</td><td>${{ '%.6f'|format(item.estimated_cost_usd) }}</td></tr>
+    {% else %}<tr><td class="empty" colspan="7">No provider metrics yet.</td></tr>{% endfor %}
+    </tbody></table>
+  </section>
+  <section><h2>Recent requests</h2>
+    <table><thead><tr><th>Time (UTC)</th><th>Provider / model</th><th>Status</th><th>Latency</th><th>Cache</th><th>Fallback</th><th>Cost</th></tr></thead><tbody>
+    {% for item in recent %}<tr><td>{{ item.timestamp }}</td><td>{{ item.provider or '—' }} / {{ item.model or '—' }}</td><td>{{ item.status }}</td><td>{{ '%.1f'|format(item.latency_ms) }} ms</td><td>{{ 'yes' if item.cache_hit else 'no' }}</td><td>{{ 'yes' if item.fallback_used else 'no' }}</td><td>${{ '%.6f'|format(item.estimated_cost_usd) }}</td></tr>
+    {% else %}<tr><td class="empty" colspan="7">No requests recorded yet.</td></tr>{% endfor %}
+    </tbody></table>
+  </section>
+</main></body></html>
