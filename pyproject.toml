@@ -5,12 +5,16 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "modelroute"
 version = "0.1.0"
-description = "Phase 1 of an extensible LLM gateway and observability platform"
+description = "Core LLM gateway with routing, resilience, caching, and rate limiting"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     "fastapi>=0.115,<1.0",
+    "google-genai==2.18.1",
+    "openai>=3.0,<4.0",
     "pydantic>=2.9,<3.0",
+    "pydantic-settings>=2.6,<3.0",
+    "redis>=8.0,<9.0",
     "uvicorn[standard]>=0.30,<1.0",
 ]
 

@@ -3,13 +3,31 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 
 from app.api.schemas import ChatCompletionRequest, ChatCompletionResponse, HealthResponse
+from app.exceptions import (
+    AllProvidersFailedError,
+    NoEligibleProviderError,
+    RateLimiterUnavailableError,
+)
 from app.services.completion_service import CompletionService
+from app.services.rate_limiter import TokenBucketRateLimiter
 
 router = APIRouter()
 
 
 def get_completion_service(request: Request) -> CompletionService:
     return request.app.state.completion_service
+
+
+def get_rate_limiter(request: Request) -> TokenBucketRateLimiter:
+    return request.app.state.rate_limiter
+
+
+def client_identity(request: Request) -> str:
+    supplied_id = request.headers.get("X-Client-ID")
+    if supplied_id and supplied_id.strip():
+        return f"client:{supplied_id.strip().casefold()}"
+    host = request.client.host if request.client else "unknown"
+    return f"ip:{host.casefold()}"
 
 
 @router.get("/health", response_model=HealthResponse)
@@ -20,12 +38,27 @@ async def health() -> HealthResponse:
 @router.post("/v1/chat/completions", response_model=ChatCompletionResponse)
 async def create_completion(
     completion_request: ChatCompletionRequest,
+    request: Request,
     service: Annotated[CompletionService, Depends(get_completion_service)],
+    rate_limiter: Annotated[TokenBucketRateLimiter, Depends(get_rate_limiter)],
 ) -> ChatCompletionResponse:
     try:
-        return await service.complete(completion_request)
-    except Exception as exc:
+        allowed = await rate_limiter.allow(client_identity(request))
+    except RateLimiterUnavailableError as exc:
         raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail="Provider request failed",
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Rate limiter unavailable",
+        ) from exc
+    if not allowed:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Rate limit exceeded",
+        )
+
+    try:
+        return await service.complete(completion_request)
+    except (NoEligibleProviderError, AllProvidersFailedError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="No provider could fulfill the request",
         ) from exc

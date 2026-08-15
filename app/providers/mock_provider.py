@@ -1,6 +1,14 @@
 import re
+from typing import Mapping
 
-from app.providers.base import BaseProvider, ProviderResult
+from pydantic import JsonValue
+
+from app.providers.base import (
+    BaseProvider,
+    GenerationRequest,
+    ProviderMetadata,
+    ProviderResult,
+)
 
 TOKEN_PATTERN = re.compile(r"\w+|[^\w\s]", flags=re.UNICODE)
 
@@ -11,25 +19,35 @@ def approximate_token_count(text: str) -> int:
 
 
 class MockProvider(BaseProvider):
-    name = "mock"
-
-    def __init__(self, model: str = "mock-model") -> None:
-        self.model = model
-
-    async def generate(
+    def __init__(
         self,
+        model: str = "mock-model",
         *,
-        prompt: str,
-        temperature: float,
-        max_tokens: int,
-    ) -> ProviderResult:
-        del temperature, max_tokens
-        normalized_prompt = prompt.strip()
+        available: bool = True,
+        input_cost_per_million: float = 0.0,
+        output_cost_per_million: float = 0.0,
+    ) -> None:
+        self.metadata = ProviderMetadata(
+            name="mock",
+            model=model,
+            available=available,
+            input_cost_per_million=input_cost_per_million,
+            output_cost_per_million=output_cost_per_million,
+        )
+
+    def effective_parameters(
+        self, request: GenerationRequest
+    ) -> Mapping[str, JsonValue]:
+        del request
+        return {}
+
+    async def generate(self, request: GenerationRequest) -> ProviderResult:
+        normalized_prompt = request.prompt.strip()
         content = f"Mock response: {normalized_prompt}"
         return ProviderResult(
             content=content,
-            provider=self.name,
-            model=self.model,
+            provider=self.metadata.name,
+            model=self.metadata.model,
             input_tokens=approximate_token_count(normalized_prompt),
             output_tokens=approximate_token_count(content),
         )
