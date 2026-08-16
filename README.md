@@ -10,7 +10,7 @@ ModelRoute is a multi-provider LLM API gateway that provides unified inference a
 flowchart TD
     Client --> API[FastAPI gateway]
     API --> Limiter[Redis token bucket]
-    Limiter --> Router[fixed / cheapest / fastest router]
+    Limiter --> Router["Provider Router<br/>fixed · cheapest · fastest"]
     Router --> Cache[Redis exact-response cache]
     Cache -->|miss| Provider[OpenAI / Gemini / Mock]
     Provider --> Retry[bounded retry and fallback]
