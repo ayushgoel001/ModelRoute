@@ -1,0 +1,38 @@
+services:
+  - type: web
+    name: modelroute
+    runtime: docker
+    plan: free
+    region: singapore
+    branch: main
+    autoDeployTrigger: commit
+    healthCheckPath: /health
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    envVars:
+      - key: MODELROUTE_APP_ENV
+        value: production
+      - key: MODELROUTE_APP_NAME
+        value: ModelRoute
+      - key: MODELROUTE_MOCK_MODEL
+        value: mock-model
+      - key: MOCK_PROVIDER_LATENCY_MS
+        value: "0"
+      - key: DEFAULT_PROVIDER
+        value: mock
+      - key: PROVIDER_TIMEOUT_SECONDS
+        value: "20"
+      - key: PROVIDER_MAX_RETRIES
+        value: "1"
+      - key: PROVIDER_RETRY_DELAY_SECONDS
+        value: "0.25"
+      - key: CACHE_TTL_SECONDS
+        value: "300"
+      - key: RATE_LIMIT_CAPACITY
+        value: "20"
+      - key: RATE_LIMIT_REFILL_RATE
+        value: "1"
+      - key: DATABASE_URL
+        sync: false
+      - key: REDIS_URL
+        sync: false
