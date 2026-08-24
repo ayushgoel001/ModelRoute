@@ -9,6 +9,7 @@ from app.exceptions import (
     AllProvidersFailedError,
     NoEligibleProviderError,
     ProviderError,
+    ProviderTimeoutError,
     PublicGeminiDemoError,
     PublicGeminiDemoRequestError,
     PublicGeminiDemoUnavailableError,
@@ -152,13 +153,28 @@ class CompletionService:
                 except ProviderError as exc:
                     error_category = type(exc).__name__
                     last_error_category = error_category
-                    logger.warning(
-                        "Provider %s failed; category=%s; retryable=%s; attempt=%s",
-                        provider.metadata.name,
-                        error_category,
-                        exc.retryable,
-                        attempt + 1,
-                    )
+                    if (
+                        isinstance(exc, ProviderTimeoutError)
+                        and exc.timeout_source is not None
+                    ):
+                        logger.warning(
+                            "Provider %s failed; category=%s; "
+                            "timeout_source=%s; retryable=%s; attempt=%s",
+                            provider.metadata.name,
+                            error_category,
+                            exc.timeout_source,
+                            exc.retryable,
+                            attempt + 1,
+                        )
+                    else:
+                        logger.warning(
+                            "Provider %s failed; category=%s; "
+                            "retryable=%s; attempt=%s",
+                            provider.metadata.name,
+                            error_category,
+                            exc.retryable,
+                            attempt + 1,
+                        )
                     if exc.retryable and attempt < self.max_retries:
                         if self.retry_delay_seconds:
                             await self.sleep(self.retry_delay_seconds)

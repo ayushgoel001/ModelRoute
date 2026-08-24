@@ -76,8 +76,14 @@ class GeminiProvider(BaseProvider):
                     generation_config=generation_config,
                     timeout=self.timeout_seconds,
                 )
-        except (TimeoutError, gemini_errors.APITimeoutError) as exc:
-            raise ProviderTimeoutError("gemini") from exc
+        except gemini_errors.APITimeoutError as exc:
+            raise ProviderTimeoutError(
+                "gemini", timeout_source="sdk_http"
+            ) from exc
+        except TimeoutError as exc:
+            raise ProviderTimeoutError(
+                "gemini", timeout_source="outer_asyncio"
+            ) from exc
         except gemini_errors.RateLimitError as exc:
             raise ProviderRateLimitError("gemini") from exc
         except (

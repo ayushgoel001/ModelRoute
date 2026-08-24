@@ -96,8 +96,26 @@ def test_gemini_timeout_is_normalized_and_bounded() -> None:
 
     adapter, _ = provider(slow_response, timeout=0.001)
 
-    with pytest.raises(ProviderTimeoutError):
+    with pytest.raises(ProviderTimeoutError) as raised:
         asyncio.run(adapter.generate(REQUEST))
+
+    assert raised.value.timeout_source == "outer_asyncio"
+    assert raised.value.retryable is True
+
+
+def test_gemini_sdk_http_timeout_source_is_normalized() -> None:
+    sdk_timeout = gemini_errors.APITimeoutError(
+        request=httpx.Request(
+            "POST", "https://generativelanguage.googleapis.com"
+        )
+    )
+    adapter, _ = provider(sdk_timeout)
+
+    with pytest.raises(ProviderTimeoutError) as raised:
+        asyncio.run(adapter.generate(REQUEST))
+
+    assert raised.value.timeout_source == "sdk_http"
+    assert raised.value.retryable is True
 
 
 @pytest.mark.parametrize(

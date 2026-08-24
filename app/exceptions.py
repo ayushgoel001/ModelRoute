@@ -51,6 +51,22 @@ class ProviderError(GatewayError):
 class ProviderTimeoutError(ProviderError):
     retryable = True
 
+    _SAFE_TIMEOUT_SOURCES = frozenset({"outer_asyncio", "sdk_http"})
+
+    def __init__(
+        self,
+        provider: str,
+        message: str = "Provider request failed",
+        *,
+        timeout_source: str | None = None,
+    ) -> None:
+        super().__init__(provider, message)
+        self.timeout_source = (
+            timeout_source
+            if timeout_source in self._SAFE_TIMEOUT_SOURCES
+            else None
+        )
+
 
 class ProviderRateLimitError(ProviderError):
     retryable = True

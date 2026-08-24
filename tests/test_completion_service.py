@@ -261,6 +261,42 @@ def test_provider_failure_log_uses_safe_normalized_category(
     assert secret_prompt not in caplog.text
 
 
+@pytest.mark.parametrize("timeout_source", ["outer_asyncio", "sdk_http"])
+def test_timeout_source_log_is_safe(caplog, timeout_source) -> None:
+    secret_message = "raw timeout exception with secret response content"
+    secret_prompt = "confidential timeout prompt"
+    provider = FakeProvider(
+        "gemini",
+        effects=[
+            ProviderTimeoutError(
+                "gemini",
+                secret_message,
+                timeout_source=timeout_source,
+            )
+        ],
+    )
+    request = ChatCompletionRequest(
+        prompt=secret_prompt,
+        strategy="fixed",
+        max_tokens=20,
+    )
+
+    with caplog.at_level(logging.WARNING, logger="app.services.completion_service"):
+        with pytest.raises(AllProvidersFailedError):
+            asyncio.run(
+                service([provider], FakeRedis(), max_retries=0).complete(request)
+            )
+
+    assert caplog.messages == [
+        (
+            "Provider gemini failed; category=ProviderTimeoutError; "
+            f"timeout_source={timeout_source}; retryable=True; attempt=1"
+        )
+    ]
+    assert secret_message not in caplog.text
+    assert secret_prompt not in caplog.text
+
+
 def test_retry_and_fallback_logs_each_attempt_without_sensitive_data(caplog) -> None:
     secret_message = "authorization-header-secret"
     secret_prompt = "confidential retry prompt"
