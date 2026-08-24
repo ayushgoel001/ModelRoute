@@ -4,9 +4,6 @@ from typing import Literal
 from pydantic import Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-PUBLIC_GEMINI_DEMO_MODEL = "gemini-3.7-flash"
-
-
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -23,15 +20,7 @@ class Settings(BaseSettings):
     openai_api_key: SecretStr | None = None
     openai_model: str = "gpt-5.6-luna"
     gemini_api_key: SecretStr | None = None
-    gemini_model: str = PUBLIC_GEMINI_DEMO_MODEL
-
-    public_gemini_demo_enabled: bool = False
-    public_gemini_demo_max_output_tokens: int = Field(default=256, gt=0, le=256)
-    public_gemini_demo_max_prompt_chars: int = Field(default=2_000, gt=0, le=10_000)
-    public_gemini_demo_client_limit: int = Field(default=2, gt=0)
-    public_gemini_demo_client_window_seconds: int = Field(default=3_600, gt=0)
-    public_gemini_demo_global_limit: int = Field(default=15, gt=0)
-    public_gemini_demo_global_window_seconds: int = Field(default=86_400, gt=0)
+    gemini_model: str = "gemini-3.7-flash"
 
     default_provider: Literal["openai", "gemini", "mock"] = "openai"
     provider_timeout_seconds: float = Field(default=20.0, gt=0)

@@ -9,7 +9,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from app.api.metrics_routes import router as metrics_router
 from app.api.routes import router
-from app.config import PUBLIC_GEMINI_DEMO_MODEL, Settings, get_settings
+from app.config import Settings, get_settings
 from app.db.database import Database
 from app.providers.base import BaseProvider
 from app.providers.gemini_provider import GeminiProvider
@@ -17,7 +17,6 @@ from app.providers.mock_provider import MockProvider
 from app.providers.openai_provider import OpenAIProvider
 from app.services.cache import ResponseCache
 from app.services.completion_service import CompletionService
-from app.services.gemini_demo_quota import PublicGeminiDemoQuota
 from app.services.latency import LatencyTracker
 from app.services.metrics import MetricsService
 from app.services.rate_limiter import TokenBucketRateLimiter
@@ -81,8 +80,15 @@ def create_app(
         alpha=resolved_settings.latency_ewma_alpha,
         initial_latency_ms=resolved_settings.initial_provider_latency_ms,
     )
+    routing_providers = configured_providers
+    if resolved_settings.default_provider == "mock":
+        routing_providers = [
+            provider
+            for provider in configured_providers
+            if provider.metadata.name == "mock"
+        ]
     provider_router = ProviderRouter(
-        configured_providers,
+        routing_providers,
         default_provider=resolved_settings.default_provider,
         latency_tracker=latency_tracker,
         allow_mock=resolved_settings.default_provider == "mock",
@@ -96,17 +102,6 @@ def create_app(
         capacity=resolved_settings.rate_limit_capacity,
         refill_rate=resolved_settings.rate_limit_refill_rate,
     )
-    public_gemini_quota = PublicGeminiDemoQuota(
-        shared_redis,
-        client_limit=resolved_settings.public_gemini_demo_client_limit,
-        client_window_seconds=(
-            resolved_settings.public_gemini_demo_client_window_seconds
-        ),
-        global_limit=resolved_settings.public_gemini_demo_global_limit,
-        global_window_seconds=(
-            resolved_settings.public_gemini_demo_global_window_seconds
-        ),
-    )
     completion_service = CompletionService(
         router=provider_router,
         cache=response_cache,
@@ -114,15 +109,6 @@ def create_app(
         max_retries=resolved_settings.provider_max_retries,
         retry_delay_seconds=resolved_settings.provider_retry_delay_seconds,
         metrics=resolved_metrics,
-        public_gemini_demo_enabled=resolved_settings.public_gemini_demo_enabled,
-        public_gemini_demo_model=PUBLIC_GEMINI_DEMO_MODEL,
-        public_gemini_max_output_tokens=(
-            resolved_settings.public_gemini_demo_max_output_tokens
-        ),
-        public_gemini_max_prompt_chars=(
-            resolved_settings.public_gemini_demo_max_prompt_chars
-        ),
-        public_gemini_quota=public_gemini_quota,
     )
 
     @asynccontextmanager
@@ -152,7 +138,6 @@ def create_app(
     application.state.metrics_service = resolved_metrics
     application.state.database = shared_database
     application.state.rate_limiter = rate_limiter
-    application.state.public_gemini_quota = public_gemini_quota
     application.include_router(router)
     application.include_router(metrics_router)
     return application

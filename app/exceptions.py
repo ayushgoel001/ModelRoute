@@ -18,28 +18,6 @@ class MetricsUnavailableError(GatewayError):
     pass
 
 
-class PublicGeminiDemoError(GatewayError):
-    pass
-
-
-class PublicGeminiDemoUnavailableError(PublicGeminiDemoError):
-    pass
-
-
-class PublicGeminiDemoRequestError(PublicGeminiDemoError):
-    pass
-
-
-class PublicGeminiQuotaExceededError(PublicGeminiDemoError):
-    def __init__(self, scope: str) -> None:
-        super().__init__("Live Gemini demo quota exhausted")
-        self.scope = scope
-
-
-class PublicGeminiQuotaUnavailableError(PublicGeminiDemoError):
-    pass
-
-
 class ProviderError(GatewayError):
     retryable = False
 

@@ -22,7 +22,7 @@ def router(providers, *, default="openai", allow_mock=False):
     )
 
 
-def test_fixed_places_available_preferred_provider_first() -> None:
+def test_fixed_places_available_default_provider_first() -> None:
     candidates = router([FakeProvider("gemini"), FakeProvider("openai")]).route(
         "fixed", REQUEST
     )
@@ -30,7 +30,7 @@ def test_fixed_places_available_preferred_provider_first() -> None:
     assert names(candidates) == ["openai", "gemini"]
 
 
-def test_fixed_skips_unavailable_preferred_provider() -> None:
+def test_fixed_skips_unavailable_default_provider() -> None:
     candidates = router(
         [FakeProvider("openai", available=False), FakeProvider("gemini")]
     ).route("fixed", REQUEST)
@@ -91,29 +91,6 @@ def test_mock_can_be_explicitly_enabled() -> None:
         [FakeProvider("mock")], default="mock", allow_mock=True
     ).route("fixed", REQUEST)
 
-    assert names(candidates) == ["mock"]
-
-
-@pytest.mark.parametrize("strategy", ["fixed", "cheapest", "fastest"])
-def test_request_preference_pins_one_available_provider(strategy: str) -> None:
-    candidates = router(
-        [FakeProvider("openai"), FakeProvider("gemini"), FakeProvider("mock")]
-    ).route(strategy, REQUEST, preferred_provider="gemini")
-
-    assert names(candidates) == ["gemini"]
-
-
-def test_explicit_mock_preference_is_not_an_implicit_fallback() -> None:
-    provider_router = router(
-        [FakeProvider("openai"), FakeProvider("mock")]
-    )
-
-    with pytest.raises(NoEligibleProviderError):
-        provider_router.route("fixed", REQUEST, preferred_provider="mock")
-
-    candidates = router(
-        [FakeProvider("openai"), FakeProvider("mock")], allow_mock=True
-    ).route("fixed", REQUEST, preferred_provider="mock")
     assert names(candidates) == ["mock"]
 
 

@@ -238,11 +238,6 @@ def app_factory():
         capacity: int = 20,
         refill_rate: float = 1.0,
         metrics_service: Any | None = None,
-        public_gemini_demo_enabled: bool = False,
-        public_gemini_demo_max_output_tokens: int = 256,
-        public_gemini_demo_max_prompt_chars: int = 2_000,
-        public_gemini_demo_client_limit: int = 2,
-        public_gemini_demo_global_limit: int = 15,
     ):
         settings = Settings(
             _env_file=None,
@@ -251,13 +246,6 @@ def app_factory():
             provider_retry_delay_seconds=0,
             rate_limit_capacity=capacity,
             rate_limit_refill_rate=refill_rate,
-            public_gemini_demo_enabled=public_gemini_demo_enabled,
-            public_gemini_demo_max_output_tokens=(
-                public_gemini_demo_max_output_tokens
-            ),
-            public_gemini_demo_max_prompt_chars=public_gemini_demo_max_prompt_chars,
-            public_gemini_demo_client_limit=public_gemini_demo_client_limit,
-            public_gemini_demo_global_limit=public_gemini_demo_global_limit,
         )
         return create_app(
             settings,

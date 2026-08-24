@@ -24,18 +24,12 @@ class ProviderRouter:
         self,
         strategy: str,
         request: GenerationRequest,
-        *,
-        preferred_provider: str | None = None,
     ) -> list[BaseProvider]:
         eligible = [
             provider
             for provider in self.providers
             if provider.metadata.available
             and (provider.metadata.name != "mock" or self.allow_mock)
-            and (
-                preferred_provider is None
-                or provider.metadata.name == preferred_provider
-            )
         ]
         if not eligible:
             raise NoEligibleProviderError("No eligible provider is configured")

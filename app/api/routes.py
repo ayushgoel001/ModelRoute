@@ -10,16 +10,10 @@ from app.api.schemas import (
     ChatCompletionRequest,
     ChatCompletionResponse,
     HealthResponse,
-    PreferredProvider,
 )
-from app.config import PUBLIC_GEMINI_DEMO_MODEL
 from app.exceptions import (
     AllProvidersFailedError,
     NoEligibleProviderError,
-    PublicGeminiDemoRequestError,
-    PublicGeminiDemoUnavailableError,
-    PublicGeminiQuotaExceededError,
-    PublicGeminiQuotaUnavailableError,
     RateLimiterUnavailableError,
 )
 from app.services.completion_service import CompletionService
@@ -45,33 +39,11 @@ def client_identity(request: Request) -> str:
     return f"ip:{host.casefold()}"
 
 
-def public_gemini_available(request: Request) -> bool:
-    settings = request.app.state.settings
-    if not settings.public_gemini_demo_enabled:
-        return False
-    return any(
-        provider.metadata.name == "gemini"
-        and provider.metadata.model == PUBLIC_GEMINI_DEMO_MODEL
-        and provider.metadata.available
-        for provider in request.app.state.providers
-    )
-
-
 @router.get("/", response_class=HTMLResponse, include_in_schema=False)
 async def homepage(request: Request) -> HTMLResponse:
-    settings = request.app.state.settings
     return templates.TemplateResponse(
         request=request,
         name="index.html",
-        context={
-            "gemini_demo_available": public_gemini_available(request),
-            "gemini_demo_max_output_tokens": (
-                settings.public_gemini_demo_max_output_tokens
-            ),
-            "gemini_demo_max_prompt_chars": (
-                settings.public_gemini_demo_max_prompt_chars
-            ),
-        },
     )
 
 
@@ -102,45 +74,11 @@ async def create_completion(
             detail="Rate limit exceeded",
         )
 
-    if completion_request.preferred_provider == PreferredProvider.GEMINI:
-        if not request.app.state.settings.public_gemini_demo_enabled:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Live Gemini demo is disabled. MockProvider remains available.",
-            )
-        if not public_gemini_available(request):
-            raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail="Live Gemini demo is unavailable. MockProvider remains available.",
-            )
-
     try:
         return await service.complete(
             completion_request,
             started_at=started_at,
-            client_identity=identity,
         )
-    except PublicGeminiQuotaExceededError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail="Live Gemini demo limit reached. MockProvider remains available.",
-        ) from exc
-    except PublicGeminiDemoRequestError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-            detail=(
-                "Live Gemini demo prompt exceeds the public size limit. "
-                "MockProvider remains available."
-            ),
-        ) from exc
-    except (
-        PublicGeminiDemoUnavailableError,
-        PublicGeminiQuotaUnavailableError,
-    ) as exc:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Live Gemini demo is unavailable. MockProvider remains available.",
-        ) from exc
     except (NoEligibleProviderError, AllProvidersFailedError) as exc:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,

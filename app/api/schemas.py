@@ -11,11 +11,6 @@ class Strategy(StrEnum):
     FASTEST = "fastest"
 
 
-class PreferredProvider(StrEnum):
-    MOCK = "mock"
-    GEMINI = "gemini"
-
-
 NonBlankPrompt = Annotated[str, StringConstraints(min_length=1)]
 
 
@@ -26,7 +21,6 @@ class ChatCompletionRequest(BaseModel):
     strategy: Strategy = Strategy.FIXED
     temperature: float = Field(default=0.2, ge=0.0, le=2.0)
     max_tokens: int = Field(default=512, ge=1, le=8192)
-    preferred_provider: PreferredProvider | None = None
 
     @field_validator("prompt")
     @classmethod

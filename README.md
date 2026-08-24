@@ -119,7 +119,7 @@ Public links:
 - Metrics Dashboard: `https://modelroute.onrender.com/dashboard`
 - Health: `https://modelroute.onrender.com/health`
 
-The public portfolio deployment runs as a Render free Docker Web Service backed by Neon PostgreSQL and Upstash Redis. It deliberately uses MockProvider without OpenAI or Gemini credentials, avoiding commercial API-key exposure and uncontrolled inference charges.
+The public portfolio deployment runs as a Render free Docker Web Service backed by Neon PostgreSQL and Upstash Redis. It is configured with `DEFAULT_PROVIDER=mock`, which restricts public requests to MockProvider and avoids anonymous real-provider inference or uncontrolled charges.
 
 `render.yaml` declares the safe demo configuration. Render prompts for the secret environment variables `DATABASE_URL` and `REDIS_URL`; no provider API-key variable belongs in the public deployment. `DATABASE_URL` accepts Neon `postgres://` or `postgresql://` URLs and adapts their SSL settings for SQLAlchemy/asyncpg. `REDIS_URL` must be Upstash's standard TLS Redis URL using `rediss://`, not its REST URL or token.
 

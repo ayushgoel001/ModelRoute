@@ -1,7 +1,9 @@
-import pytest
-from pydantic import ValidationError
+import asyncio
 
-from app.config import PUBLIC_GEMINI_DEMO_MODEL, Settings
+from app.config import Settings
+from app.main import _build_providers
+from app.providers.gemini_provider import GeminiProvider
+from app.providers.openai_provider import OpenAIProvider
 
 
 def test_gemini_introductory_pricing_defaults(monkeypatch) -> None:
@@ -41,18 +43,27 @@ def test_mock_latency_defaults_to_zero_and_is_environment_configurable(
     assert Settings(_env_file=None).mock_provider_latency_ms == 50
 
 
-def test_public_gemini_demo_has_safe_disabled_defaults(monkeypatch) -> None:
-    monkeypatch.delenv("PUBLIC_GEMINI_DEMO_ENABLED", raising=False)
-    settings = Settings(_env_file=None)
+def test_real_provider_registry_uses_normal_environment_configuration() -> None:
+    settings = Settings(
+        _env_file=None,
+        openai_api_key="test-openai-key",
+        openai_model="test-openai-model",
+        gemini_api_key="test-gemini-key",
+        gemini_model="test-gemini-model",
+    )
 
-    assert settings.public_gemini_demo_enabled is False
-    assert settings.gemini_model == PUBLIC_GEMINI_DEMO_MODEL
-    assert settings.public_gemini_demo_max_output_tokens == 256
-    assert settings.public_gemini_demo_max_prompt_chars == 2_000
-    assert settings.public_gemini_demo_client_limit == 2
-    assert settings.public_gemini_demo_global_limit == 15
+    providers = _build_providers(settings)
+    openai = next(provider for provider in providers if provider.metadata.name == "openai")
+    gemini = next(provider for provider in providers if provider.metadata.name == "gemini")
 
+    assert isinstance(openai, OpenAIProvider)
+    assert isinstance(gemini, GeminiProvider)
+    assert openai.metadata.model == "test-openai-model"
+    assert gemini.metadata.model == "test-gemini-model"
+    assert openai.metadata.available is True
+    assert gemini.metadata.available is True
 
-def test_public_gemini_output_cap_cannot_be_configured_above_256() -> None:
-    with pytest.raises(ValidationError):
-        Settings(_env_file=None, public_gemini_demo_max_output_tokens=257)
+    async def close_providers() -> None:
+        await asyncio.gather(*(provider.close() for provider in providers))
+
+    asyncio.run(close_providers())

@@ -26,8 +26,6 @@ services:
         value: "1"
       - key: PROVIDER_RETRY_DELAY_SECONDS
         value: "0.25"
-      - key: PUBLIC_GEMINI_DEMO_ENABLED
-        value: "false"
       - key: CACHE_TTL_SECONDS
         value: "300"
       - key: RATE_LIMIT_CAPACITY

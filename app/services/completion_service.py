@@ -11,19 +11,13 @@ from app.exceptions import (
     ProviderError,
     ProviderRateLimitError,
     ProviderTimeoutError,
-    PublicGeminiDemoError,
-    PublicGeminiDemoRequestError,
-    PublicGeminiDemoUnavailableError,
-    PublicGeminiQuotaUnavailableError,
 )
 from app.providers.base import (
-    BaseProvider,
     GenerationRequest,
     ProviderMetadata,
     ProviderResult,
 )
 from app.services.cache import ResponseCache
-from app.services.gemini_demo_quota import PublicGeminiDemoQuota
 from app.services.latency import LatencyTracker
 from app.services.metrics import MetricsService
 from app.services.router import ProviderRouter
@@ -42,11 +36,6 @@ class CompletionService:
         retry_delay_seconds: float,
         metrics: MetricsService | None = None,
         sleep: Callable[[float], Awaitable[None]] = asyncio.sleep,
-        public_gemini_demo_enabled: bool = False,
-        public_gemini_demo_model: str = "gemini-3.7-flash",
-        public_gemini_max_output_tokens: int = 256,
-        public_gemini_max_prompt_chars: int = 2_000,
-        public_gemini_quota: PublicGeminiDemoQuota | None = None,
     ) -> None:
         self.router = router
         self.cache = cache
@@ -55,18 +44,12 @@ class CompletionService:
         self.retry_delay_seconds = retry_delay_seconds
         self.metrics = metrics
         self.sleep = sleep
-        self.public_gemini_demo_enabled = public_gemini_demo_enabled
-        self.public_gemini_demo_model = public_gemini_demo_model
-        self.public_gemini_max_output_tokens = public_gemini_max_output_tokens
-        self.public_gemini_max_prompt_chars = public_gemini_max_prompt_chars
-        self.public_gemini_quota = public_gemini_quota
 
     async def complete(
         self,
         request: ChatCompletionRequest,
         *,
         started_at: float | None = None,
-        client_identity: str | None = None,
     ) -> ChatCompletionResponse:
         gateway_started_at = started_at if started_at is not None else perf_counter()
         request_id = uuid4()
@@ -76,16 +59,7 @@ class CompletionService:
             max_tokens=request.max_tokens,
         )
         try:
-            preferred_provider = (
-                request.preferred_provider.value
-                if request.preferred_provider is not None
-                else None
-            )
-            candidates = self.router.route(
-                request.strategy.value,
-                generation_request,
-                preferred_provider=preferred_provider,
-            )
+            candidates = self.router.route(request.strategy.value, generation_request)
         except NoEligibleProviderError:
             await self._record_failure(
                 request_id=request_id,
@@ -98,17 +72,7 @@ class CompletionService:
         last_error_category = "AllProvidersFailedError"
 
         for candidate_index, provider in enumerate(candidates):
-            try:
-                provider_request = self._provider_request(provider, generation_request)
-            except PublicGeminiDemoError as exc:
-                await self._record_failure(
-                    request_id=request_id,
-                    request=request,
-                    started_at=gateway_started_at,
-                    error_category=type(exc).__name__,
-                )
-                raise
-
+            provider_request = generation_request
             cache_key = self.cache.build_key(provider, provider_request)
             cached = await self.cache.get(cache_key)
             if cached is not None:
@@ -121,31 +85,6 @@ class CompletionService:
                 )
                 await self._record_success(response, request, provider.metadata)
                 return response
-
-            if self._is_public_gemini(provider):
-                if self.public_gemini_quota is None:
-                    exc = PublicGeminiQuotaUnavailableError(
-                        "Live Gemini demo quota is unavailable"
-                    )
-                    await self._record_failure(
-                        request_id=request_id,
-                        request=request,
-                        started_at=gateway_started_at,
-                        error_category=type(exc).__name__,
-                    )
-                    raise exc
-                try:
-                    await self.public_gemini_quota.consume(
-                        client_identity or "unidentified"
-                    )
-                except PublicGeminiDemoError as exc:
-                    await self._record_failure(
-                        request_id=request_id,
-                        request=request,
-                        started_at=gateway_started_at,
-                        error_category=type(exc).__name__,
-                    )
-                    raise
 
             for attempt in range(self.max_retries + 1):
                 attempt_started_at = perf_counter()
@@ -217,36 +156,6 @@ class CompletionService:
             error_category=last_error_category,
         )
         raise AllProvidersFailedError("All eligible providers failed")
-
-    def _is_public_gemini(self, provider: BaseProvider) -> bool:
-        return (
-            self.public_gemini_demo_enabled
-            and provider.metadata.name == "gemini"
-        )
-
-    def _provider_request(
-        self,
-        provider: BaseProvider,
-        request: GenerationRequest,
-    ) -> GenerationRequest:
-        if not self._is_public_gemini(provider):
-            return request
-        if provider.metadata.model != self.public_gemini_demo_model:
-            raise PublicGeminiDemoUnavailableError(
-                "Live Gemini demo model is not configured"
-            )
-        if len(request.prompt) > self.public_gemini_max_prompt_chars:
-            raise PublicGeminiDemoRequestError(
-                "Live Gemini demo prompt exceeds the public limit"
-            )
-        return GenerationRequest(
-            prompt=request.prompt,
-            temperature=request.temperature,
-            max_tokens=min(
-                request.max_tokens,
-                self.public_gemini_max_output_tokens,
-            ),
-        )
 
     async def _record_success(
         self,

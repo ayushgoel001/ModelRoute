@@ -90,6 +90,31 @@ def test_all_strategies_can_use_explicit_mock_provider(
     assert response.json()["provider"] == "mock"
 
 
+@pytest.mark.parametrize("strategy", ["fixed", "cheapest", "fastest"])
+def test_mock_default_deployment_excludes_configured_real_providers(
+    app_factory, valid_payload, strategy: str
+) -> None:
+    mock = FakeProvider("mock")
+    gemini = FakeProvider("gemini")
+    openai = FakeProvider("openai")
+    application = app_factory(
+        [mock, gemini, openai],
+        default_provider="mock",
+    )
+    valid_payload["strategy"] = strategy
+    valid_payload["prompt"] = f"mock-only {strategy} request"
+
+    response = request(
+        application, "POST", "/v1/chat/completions", json=valid_payload
+    )
+
+    assert response.status_code == 200
+    assert response.json()["provider"] == "mock"
+    assert mock.calls == 1
+    assert gemini.calls == 0
+    assert openai.calls == 0
+
+
 def test_requests_receive_distinct_request_ids(app_factory, valid_payload) -> None:
     application = app_factory()
     first = request(
