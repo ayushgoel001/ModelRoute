@@ -71,6 +71,24 @@ class ProviderTimeoutError(ProviderError):
 class ProviderRateLimitError(ProviderError):
     retryable = True
 
+    _SAFE_RATE_LIMIT_SOURCES = frozenset(
+        {"daily_quota", "short_term", "unknown_429"}
+    )
+
+    def __init__(
+        self,
+        provider: str,
+        message: str = "Provider request failed",
+        *,
+        rate_limit_source: str | None = None,
+    ) -> None:
+        super().__init__(provider, message)
+        self.rate_limit_source = (
+            rate_limit_source
+            if rate_limit_source in self._SAFE_RATE_LIMIT_SOURCES
+            else None
+        )
+
 
 class ProviderUnavailableError(ProviderError):
     retryable = True

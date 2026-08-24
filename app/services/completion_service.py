@@ -9,6 +9,7 @@ from app.exceptions import (
     AllProvidersFailedError,
     NoEligibleProviderError,
     ProviderError,
+    ProviderRateLimitError,
     ProviderTimeoutError,
     PublicGeminiDemoError,
     PublicGeminiDemoRequestError,
@@ -163,6 +164,19 @@ class CompletionService:
                             provider.metadata.name,
                             error_category,
                             exc.timeout_source,
+                            exc.retryable,
+                            attempt + 1,
+                        )
+                    elif (
+                        isinstance(exc, ProviderRateLimitError)
+                        and exc.rate_limit_source is not None
+                    ):
+                        logger.warning(
+                            "Provider %s failed; category=%s; "
+                            "rate_limit_source=%s; retryable=%s; attempt=%s",
+                            provider.metadata.name,
+                            error_category,
+                            exc.rate_limit_source,
                             exc.retryable,
                             attempt + 1,
                         )

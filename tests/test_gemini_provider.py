@@ -55,6 +55,16 @@ def status_error(error_type, status_code: int):
     return error_type("safe test error", response=response, body={})
 
 
+def rate_limit_error(body: object):
+    request = httpx.Request("POST", "https://generativelanguage.googleapis.com")
+    response = httpx.Response(429, request=request)
+    return gemini_errors.RateLimitError(
+        "raw provider text must remain private",
+        response=response,
+        body=body,
+    )
+
+
 def test_gemini_success_normalizes_interaction_and_usage() -> None:
     response = SimpleNamespace(
         output_text="normalized",
@@ -115,6 +125,54 @@ def test_gemini_sdk_http_timeout_source_is_normalized() -> None:
         asyncio.run(adapter.generate(REQUEST))
 
     assert raised.value.timeout_source == "sdk_http"
+    assert raised.value.retryable is True
+
+
+@pytest.mark.parametrize(
+    ("body", "expected_source"),
+    [
+        (
+            {
+                "error": {
+                    "code": "quota_exceeded",
+                    "message": "raw quota text",
+                }
+            },
+            "daily_quota",
+        ),
+        (
+            {
+                "error": {
+                    "code": "rate_limit_exceeded",
+                    "message": "raw rate-limit text",
+                }
+            },
+            "short_term",
+        ),
+        (
+            {
+                "error": {
+                    "code": "private_unrecognized_provider_code",
+                    "message": "raw unknown text",
+                }
+            },
+            "unknown_429",
+        ),
+        ({"error": {"message": "missing code"}}, "unknown_429"),
+        ({"error": "malformed error body"}, "unknown_429"),
+        (None, "unknown_429"),
+    ],
+)
+def test_gemini_rate_limit_source_is_allowlisted(
+    body: object,
+    expected_source: str,
+) -> None:
+    adapter, _ = provider(rate_limit_error(body))
+
+    with pytest.raises(ProviderRateLimitError) as raised:
+        asyncio.run(adapter.generate(REQUEST))
+
+    assert raised.value.rate_limit_source == expected_source
     assert raised.value.retryable is True
 
 

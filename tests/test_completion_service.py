@@ -297,6 +297,46 @@ def test_timeout_source_log_is_safe(caplog, timeout_source) -> None:
     assert secret_prompt not in caplog.text
 
 
+@pytest.mark.parametrize(
+    "rate_limit_source",
+    ["daily_quota", "short_term", "unknown_429"],
+)
+def test_rate_limit_source_log_is_safe(caplog, rate_limit_source) -> None:
+    secret_message = "raw Google 429 text with private provider code"
+    secret_prompt = "confidential rate-limited prompt"
+    provider = FakeProvider(
+        "gemini",
+        effects=[
+            ProviderRateLimitError(
+                "gemini",
+                secret_message,
+                rate_limit_source=rate_limit_source,
+            )
+        ],
+    )
+    request = ChatCompletionRequest(
+        prompt=secret_prompt,
+        strategy="fixed",
+        max_tokens=20,
+    )
+
+    with caplog.at_level(logging.WARNING, logger="app.services.completion_service"):
+        with pytest.raises(AllProvidersFailedError):
+            asyncio.run(
+                service([provider], FakeRedis(), max_retries=0).complete(request)
+            )
+
+    assert caplog.messages == [
+        (
+            "Provider gemini failed; category=ProviderRateLimitError; "
+            f"rate_limit_source={rate_limit_source}; "
+            "retryable=True; attempt=1"
+        )
+    ]
+    assert secret_message not in caplog.text
+    assert secret_prompt not in caplog.text
+
+
 def test_retry_and_fallback_logs_each_attempt_without_sensitive_data(caplog) -> None:
     secret_message = "authorization-header-secret"
     secret_prompt = "confidential retry prompt"

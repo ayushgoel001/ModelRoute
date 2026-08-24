@@ -21,6 +21,24 @@ from app.providers.base import (
     ProviderResult,
 )
 
+_RATE_LIMIT_SOURCES = {
+    "quota_exceeded": "daily_quota",
+    "rate_limit_exceeded": "short_term",
+}
+
+
+def _rate_limit_source(error: Any) -> str:
+    body = getattr(error, "body", None)
+    if not isinstance(body, dict):
+        return "unknown_429"
+    error_body = body.get("error")
+    if not isinstance(error_body, dict):
+        return "unknown_429"
+    code = error_body.get("code")
+    if not isinstance(code, str):
+        return "unknown_429"
+    return _RATE_LIMIT_SOURCES.get(code, "unknown_429")
+
 
 class GeminiProvider(BaseProvider):
     def __init__(
@@ -85,7 +103,10 @@ class GeminiProvider(BaseProvider):
                 "gemini", timeout_source="outer_asyncio"
             ) from exc
         except gemini_errors.RateLimitError as exc:
-            raise ProviderRateLimitError("gemini") from exc
+            raise ProviderRateLimitError(
+                "gemini",
+                rate_limit_source=_rate_limit_source(exc),
+            ) from exc
         except (
             gemini_errors.AuthenticationError,
             gemini_errors.PermissionDeniedError,
