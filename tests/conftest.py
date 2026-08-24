@@ -22,6 +22,9 @@ class FakeRedis:
         self.values: dict[str, str] = {}
         self.expirations: dict[str, int] = {}
         self.buckets: dict[str, tuple[float, float]] = {}
+        self.quota_counts: dict[str, int] = {}
+        self.quota_eval_calls: list[tuple[str, str]] = []
+        self.quota_lock = asyncio.Lock()
         self.now = 1_000.0
         self.fail_get = False
         self.fail_set = False
@@ -43,17 +46,45 @@ class FakeRedis:
         self,
         script: str,
         number_of_keys: int,
-        key: str,
-        capacity: int,
-        refill_rate: float,
-        ttl: int,
+        *args: object,
     ) -> list[object]:
-        del script, number_of_keys
+        del script
         if self.fail_eval:
-            raise RedisConnectionError("rate limiter unavailable")
+            raise RedisConnectionError("redis unavailable")
+        if number_of_keys == 2:
+            (
+                client_key,
+                global_key,
+                client_limit,
+                global_limit,
+                client_ttl,
+                global_ttl,
+            ) = args
+            assert isinstance(client_key, str)
+            assert isinstance(global_key, str)
+            async with self.quota_lock:
+                self.quota_eval_calls.append((client_key, global_key))
+                client_count = self.quota_counts.get(client_key, 0)
+                global_count = self.quota_counts.get(global_key, 0)
+                if global_count >= int(global_limit):
+                    return [0, 2]
+                if client_count >= int(client_limit):
+                    return [0, 1]
+                self.quota_counts[client_key] = client_count + 1
+                self.quota_counts[global_key] = global_count + 1
+                self.expirations[client_key] = int(client_ttl)
+                self.expirations[global_key] = int(global_ttl)
+                return [1, 0]
+
+        assert number_of_keys == 1
+        key, capacity, refill_rate, ttl = args
+        assert isinstance(key, str)
         self.eval_keys.append(key)
         tokens, previous = self.buckets.get(key, (float(capacity), self.now))
-        tokens = min(float(capacity), tokens + (self.now - previous) * refill_rate)
+        tokens = min(
+            float(capacity),
+            tokens + (self.now - previous) * float(refill_rate),
+        )
         allowed = tokens >= 1
         if allowed:
             tokens -= 1
@@ -207,13 +238,26 @@ def app_factory():
         capacity: int = 20,
         refill_rate: float = 1.0,
         metrics_service: Any | None = None,
+        public_gemini_demo_enabled: bool = False,
+        public_gemini_demo_max_output_tokens: int = 256,
+        public_gemini_demo_max_prompt_chars: int = 2_000,
+        public_gemini_demo_client_limit: int = 2,
+        public_gemini_demo_global_limit: int = 15,
     ):
         settings = Settings(
+            _env_file=None,
             default_provider=default_provider,
             provider_max_retries=max_retries,
             provider_retry_delay_seconds=0,
             rate_limit_capacity=capacity,
             rate_limit_refill_rate=refill_rate,
+            public_gemini_demo_enabled=public_gemini_demo_enabled,
+            public_gemini_demo_max_output_tokens=(
+                public_gemini_demo_max_output_tokens
+            ),
+            public_gemini_demo_max_prompt_chars=public_gemini_demo_max_prompt_chars,
+            public_gemini_demo_client_limit=public_gemini_demo_client_limit,
+            public_gemini_demo_global_limit=public_gemini_demo_global_limit,
         )
         return create_app(
             settings,

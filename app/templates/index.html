@@ -3,610 +3,317 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Interactive public demo for the ModelRoute LLM API gateway.">
-  <title>ModelRoute · Interactive gateway demo</title>
+  <meta name="description" content="ModelRoute public gateway console for provider routing, exact caching, rate limiting, fallback, and observability.">
+  <title>ModelRoute / Gateway Console</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='6' fill='%232c3748'/%3E%3Cpath d='M14 45V19h7l11 14 11-14h7v26h-7V29L32 43 21 29v16z' fill='%23f2f0e9'/%3E%3C/svg%3E">
   <style>
     :root {
       color-scheme: light;
       font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      color: #172033;
-      background: #f5f7fb;
+      color: #242a32;
+      background: #e9e8e2;
       font-synthesis: none;
+      --paper: #f5f4ee;
+      --panel: #fbfaf5;
+      --line: #c9c8c0;
+      --line-dark: #9ea2a5;
+      --graphite: #242a32;
+      --muted: #626a73;
+      --blue: #355f82;
+      --blue-soft: #e5edf3;
+      --green: #2f6b4f;
+      --green-soft: #e1eee7;
+      --amber: #8a6428;
+      --amber-soft: #f4ead3;
+      --red: #8a3f3f;
+      --red-soft: #f3e3e0;
+      --mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
     }
 
     * { box-sizing: border-box; }
-
-    body {
-      margin: 0;
-      min-height: 100vh;
-      background: #f5f7fb;
-    }
-
+    body { margin: 0; min-height: 100vh; background: #e9e8e2; }
+    button, input, select, textarea { font: inherit; }
     a { color: inherit; }
-
-    .shell {
-      width: min(1180px, calc(100% - 2rem));
-      margin: 0 auto;
-    }
-
-    .topbar {
-      background: rgba(255, 255, 255, .96);
-      border-bottom: 1px solid #e4e7ec;
-    }
-
-    .topbar-inner {
-      min-height: 68px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 1rem;
-    }
-
-    .brand {
-      display: inline-flex;
-      align-items: center;
-      gap: .7rem;
-      text-decoration: none;
-      font-weight: 750;
-      letter-spacing: -.02em;
-    }
-
-    .brand-mark {
-      width: 34px;
-      height: 34px;
-      display: grid;
-      place-items: center;
-      color: white;
-      background: #175cd3;
-      border-radius: 9px;
-      font-size: .82rem;
-      letter-spacing: .02em;
-    }
-
-    nav { display: flex; align-items: center; gap: .35rem; }
-
-    .nav-link {
-      padding: .58rem .72rem;
-      border-radius: .5rem;
-      color: #475467;
-      font-size: .9rem;
-      font-weight: 600;
-      text-decoration: none;
-    }
-
-    .nav-link:hover { background: #f2f4f7; color: #172033; }
-
-    .hero { padding: 3.5rem 0 2rem; }
-
-    .eyebrow {
-      display: inline-flex;
-      align-items: center;
-      gap: .45rem;
-      margin: 0 0 .9rem;
-      padding: .35rem .58rem;
-      border: 1px solid #b2ccff;
-      border-radius: 999px;
-      color: #1849a9;
-      background: #eff4ff;
-      font-size: .75rem;
-      font-weight: 700;
-      letter-spacing: .04em;
-      text-transform: uppercase;
-    }
-
-    .eyebrow::before {
-      content: "";
-      width: 7px;
-      height: 7px;
-      border-radius: 50%;
-      background: #1570ef;
-    }
-
-    h1 {
-      max-width: 800px;
-      margin: 0;
-      color: #101828;
-      font-size: clamp(2.1rem, 5vw, 3.5rem);
-      line-height: 1.05;
-      letter-spacing: -.045em;
-    }
-
-    .hero-copy {
-      max-width: 780px;
-      margin: 1rem 0 0;
-      color: #475467;
-      font-size: 1.04rem;
-      line-height: 1.7;
-    }
-
-    .system-tags {
-      display: flex;
-      flex-wrap: wrap;
-      gap: .55rem;
-      margin-top: 1.25rem;
-    }
-
-    .system-tag {
-      padding: .38rem .62rem;
-      border: 1px solid #d0d5dd;
-      border-radius: .45rem;
-      color: #344054;
-      background: #fff;
-      font-size: .78rem;
-      font-weight: 650;
-    }
-
-    .workspace {
-      display: grid;
-      grid-template-columns: minmax(0, 1.05fr) minmax(0, .95fr);
-      gap: 1.25rem;
-      align-items: stretch;
-      padding-bottom: 1.5rem;
-    }
-
-    .panel {
-      min-width: 0;
-      padding: 1.35rem;
-      background: #fff;
-      border: 1px solid #e4e7ec;
-      border-radius: .85rem;
-      box-shadow: 0 1px 2px rgba(16, 24, 40, .04), 0 8px 24px rgba(16, 24, 40, .04);
-    }
-
-    .panel-header {
-      display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
-      gap: 1rem;
-      padding-bottom: 1rem;
-      border-bottom: 1px solid #eaecf0;
-    }
-
-    h2 { margin: 0; font-size: 1.08rem; letter-spacing: -.015em; }
-
-    .panel-description {
-      margin: .35rem 0 0;
-      color: #667085;
-      font-size: .87rem;
-      line-height: 1.5;
-    }
-
-    form { margin-top: 1.15rem; }
-
-    label {
-      display: block;
-      margin-bottom: .42rem;
-      color: #344054;
-      font-size: .86rem;
-      font-weight: 650;
-    }
-
-    textarea,
-    select,
-    input {
-      width: 100%;
-      border: 1px solid #d0d5dd;
-      border-radius: .55rem;
-      color: #101828;
-      background: #fff;
-      font: inherit;
-      outline: none;
-      transition: border-color .15s ease, box-shadow .15s ease;
-    }
-
-    textarea {
-      min-height: 142px;
-      padding: .8rem .85rem;
-      resize: vertical;
-      line-height: 1.55;
-    }
-
-    select,
-    input { min-height: 44px; padding: .65rem .72rem; }
-
-    textarea:focus,
-    select:focus,
-    input:focus {
-      border-color: #84adff;
-      box-shadow: 0 0 0 3px #d1e0ff;
-    }
-
-    .form-grid {
-      display: grid;
-      grid-template-columns: 1.2fr .8fr .8fr;
-      gap: .8rem;
-      margin-top: .9rem;
-    }
-
-    .field-hint {
-      margin: .38rem 0 0;
-      color: #667085;
-      font-size: .76rem;
-    }
-
-    .cache-guidance {
-      margin: 1rem 0;
-      padding: .78rem .85rem;
-      border-left: 3px solid #2e90fa;
-      color: #344054;
-      background: #f5faff;
-      font-size: .83rem;
-      line-height: 1.5;
-    }
-
-    .button-row { display: flex; align-items: center; gap: .75rem; }
-
-    button {
-      min-height: 44px;
-      padding: .68rem 1rem;
-      border: 1px solid transparent;
-      border-radius: .55rem;
-      font: inherit;
-      font-size: .9rem;
-      font-weight: 700;
-      cursor: pointer;
-    }
-
-    button:focus-visible,
-    a:focus-visible { outline: 3px solid #84adff; outline-offset: 2px; }
-
-    button:disabled { cursor: not-allowed; opacity: .62; }
-
-    .primary-button { color: #fff; background: #175cd3; border-color: #175cd3; }
-    .primary-button:hover:not(:disabled) { background: #1849a9; }
-    .secondary-button { color: #344054; background: #fff; border-color: #d0d5dd; }
-    .secondary-button:hover:not(:disabled) { background: #f9fafb; }
-
-    .request-status { color: #667085; font-size: .82rem; }
-
-    .response-panel { display: flex; flex-direction: column; }
-
-    .empty-state {
-      flex: 1;
-      min-height: 370px;
-      display: grid;
-      place-items: center;
-      padding: 2rem;
-      text-align: center;
-      color: #667085;
-    }
-
-    .empty-state strong { display: block; margin-bottom: .4rem; color: #344054; }
-
-    .error-box {
-      margin-top: 1rem;
-      padding: .85rem;
-      border: 1px solid #fecdca;
-      border-radius: .55rem;
-      color: #912018;
-      background: #fef3f2;
-      font-size: .86rem;
-      line-height: 1.5;
-    }
-
-    .result { margin-top: 1rem; }
-
-    .result-heading {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: .8rem;
-      margin-bottom: .85rem;
-    }
-
-    .cache-badge {
-      display: inline-flex;
-      align-items: center;
-      min-height: 28px;
-      padding: .28rem .55rem;
-      border-radius: 999px;
-      font-size: .73rem;
-      font-weight: 800;
-      letter-spacing: .04em;
-    }
-
-    .cache-hit { color: #166534; background: #dcfce7; border: 1px solid #86efac; }
-    .cache-miss { color: #92400e; background: #fef3c7; border: 1px solid #fcd34d; }
-
-    .response-content {
-      min-height: 118px;
-      margin: 0;
-      padding: .9rem;
-      border: 1px solid #e4e7ec;
-      border-radius: .6rem;
-      color: #1d2939;
-      background: #f9fafb;
-      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-      font-size: .86rem;
-      line-height: 1.6;
-      white-space: pre-wrap;
-      overflow-wrap: anywhere;
-    }
-
-    .metadata-grid {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: .65rem;
-      margin-top: .85rem;
-    }
-
-    .metadata-item {
-      min-width: 0;
-      padding: .72rem;
-      border: 1px solid #eaecf0;
-      border-radius: .55rem;
-    }
-
-    .metadata-label {
-      color: #667085;
-      font-size: .71rem;
-      font-weight: 650;
-      text-transform: uppercase;
-      letter-spacing: .035em;
-    }
-
-    .metadata-value {
-      margin-top: .28rem;
-      color: #1d2939;
-      font-size: .88rem;
-      font-weight: 700;
-      overflow-wrap: anywhere;
-    }
-
-    .request-id {
-      margin: .85rem 0;
-      color: #667085;
-      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-      font-size: .73rem;
-      overflow-wrap: anywhere;
-    }
-
-    .note-grid {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 1rem;
-      padding-bottom: 3rem;
-    }
-
-    .note {
-      padding: 1rem 1.1rem;
-      border: 1px solid #e4e7ec;
-      border-radius: .7rem;
-      color: #475467;
-      background: #fff;
-      font-size: .83rem;
-      line-height: 1.6;
-    }
-
-    .note strong { color: #344054; }
-
+    .system-bar { min-height: 54px; border-bottom: 1px solid #8d9398; background: #2c3748; color: #f4f3ed; }
+    .bar-inner, .console { width: min(1240px, calc(100% - 28px)); margin: 0 auto; }
+    .bar-inner { min-height: 54px; display: flex; align-items: center; justify-content: space-between; gap: 18px; }
+    .wordmark { display: flex; align-items: center; gap: 10px; min-width: 0; }
+    .mark { width: 28px; height: 28px; display: grid; place-items: center; border: 1px solid #8294a5; color: #dce8f0; font-family: var(--mono); font-size: 10px; font-weight: 700; }
+    .wordmark-text { font-family: var(--mono); font-size: 13px; font-weight: 700; letter-spacing: .04em; }
+    .wordmark-text span { color: #aeb9c3; font-weight: 400; }
+    .system-state { display: flex; align-items: center; gap: 8px; font-family: var(--mono); font-size: 10px; letter-spacing: .08em; }
+    .state-led { width: 7px; height: 7px; border-radius: 50%; background: #72a68b; box-shadow: 0 0 0 2px #415647; }
+    .console { padding: 18px 0 28px; }
+    .utility-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; margin-bottom: 15px; }
+    .intro { min-width: 0; }
+    .kicker { margin: 0 0 4px; color: var(--blue); font-family: var(--mono); font-size: 10px; font-weight: 700; letter-spacing: .12em; }
+    h1 { margin: 0; font-size: clamp(21px, 3vw, 29px); line-height: 1.2; letter-spacing: -.025em; }
+    .lede { max-width: 770px; margin: 6px 0 0; color: var(--muted); font-size: 13px; line-height: 1.55; }
+    .utility-nav { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 5px; }
+    .utility-link { min-height: 31px; display: inline-flex; align-items: center; gap: 6px; padding: 6px 9px; border: 1px solid var(--line-dark); background: var(--paper); color: #343b43; font-family: var(--mono); font-size: 10px; font-weight: 700; letter-spacing: .035em; text-decoration: none; }
+    .utility-link:hover { border-color: var(--blue); color: var(--blue); background: #f9faf8; }
+    .utility-link svg { width: 12px; height: 12px; fill: currentColor; }
+    .mode-strip, .panel, .pipeline-panel, .notice { border: 1px solid var(--line); background: var(--panel); box-shadow: 1px 1px 0 rgba(36, 42, 50, .05); }
+    .mode-strip { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 12px; padding: 9px 11px; margin-bottom: 10px; }
+    .strip-label, .section-index, .field-label, .meta-label, .pipeline-stage, .state-display { font-family: var(--mono); text-transform: uppercase; letter-spacing: .07em; }
+    .strip-label { color: var(--muted); font-size: 10px; font-weight: 700; }
+    .mode-buttons { display: flex; gap: 5px; }
+    .mode-button { min-height: 31px; padding: 5px 10px; border: 1px solid var(--line-dark); background: #ecebe5; color: #49515a; font-family: var(--mono); font-size: 10px; font-weight: 700; cursor: pointer; }
+    .mode-button[aria-pressed="true"] { border-color: var(--blue); background: var(--blue); color: #fff; }
+    .mode-button:disabled { cursor: not-allowed; color: #8e9295; border-color: #d2d1ca; background: #e8e7e1; }
+    .mode-note { color: var(--muted); font-family: var(--mono); font-size: 10px; text-align: right; }
+    .workspace { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; align-items: stretch; }
+    .panel { min-width: 0; }
+    .panel-head { min-height: 43px; display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 9px 11px; border-bottom: 1px solid var(--line); background: #efeee8; }
+    .panel-title { display: flex; align-items: baseline; gap: 9px; }
+    .section-index { color: var(--blue); font-size: 9px; font-weight: 800; }
+    h2 { margin: 0; color: #30363d; font-family: var(--mono); font-size: 12px; letter-spacing: .06em; text-transform: uppercase; }
+    .state-display { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: 9px; font-weight: 700; }
+    .state-display::before { content: ""; width: 6px; height: 6px; background: #8c9297; }
+    .state-display.sending::before { background: var(--blue); }
+    .state-display.complete::before { background: var(--green); }
+    .state-display.error::before { background: var(--red); }
+    .panel-body { padding: 11px; }
+    label { display: block; }
+    .field-label { display: block; margin-bottom: 5px; color: #4f5861; font-size: 9px; font-weight: 800; }
+    textarea, select, input { width: 100%; border: 1px solid #aeb1b0; border-radius: 2px; background: #fffef9; color: var(--graphite); outline: none; }
+    textarea { min-height: 118px; padding: 9px; resize: vertical; font-family: var(--mono); font-size: 12px; line-height: 1.5; }
+    select, input { min-height: 35px; padding: 6px 8px; font-size: 12px; }
+    textarea:focus, select:focus, input:focus { border-color: var(--blue); box-shadow: 0 0 0 2px #d8e2ea; }
+    select:disabled { color: #747a80; background: #eae9e3; }
+    .form-grid { display: grid; grid-template-columns: 1.15fr .75fr .75fr; gap: 8px; margin-top: 9px; }
+    .field-help { min-height: 13px; margin: 4px 0 0; color: #7a8086; font-family: var(--mono); font-size: 9px; }
+    .form-footer { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 10px; }
+    .keyboard-hint { color: var(--muted); font-family: var(--mono); font-size: 9px; }
+    button.action { min-height: 34px; padding: 6px 11px; border: 1px solid #234866; border-radius: 2px; background: var(--blue); color: #fff; font-family: var(--mono); font-size: 10px; font-weight: 800; letter-spacing: .04em; cursor: pointer; }
+    button.action:hover:not(:disabled) { background: #284f6e; }
+    button.action.secondary { border-color: #94999c; background: #efeee8; color: #3d444b; }
+    button.action.secondary:hover:not(:disabled) { border-color: var(--blue); color: var(--blue); background: #f8f8f4; }
+    button:disabled { cursor: not-allowed; opacity: .58; }
+    button:focus-visible, a:focus-visible { outline: 2px solid #668cac; outline-offset: 2px; }
+    .error-box { margin-bottom: 9px; padding: 8px 9px; border: 1px solid #c99a94; background: var(--red-soft); color: #743535; font-size: 11px; line-height: 1.45; }
+    .empty-state { min-height: 225px; display: grid; place-items: center; color: #777d82; text-align: center; font-family: var(--mono); font-size: 10px; line-height: 1.65; }
+    .empty-diagram { margin: 0 auto 10px; color: #8e969b; font-size: 18px; letter-spacing: .18em; }
+    .result-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
+    .cache-badge { display: inline-flex; align-items: center; min-height: 26px; padding: 4px 8px; border: 1px solid; font-family: var(--mono); font-size: 10px; font-weight: 800; letter-spacing: .06em; }
+    .cache-hit { border-color: #79a38b; color: var(--green); background: var(--green-soft); }
+    .cache-miss { border-color: #c4a263; color: var(--amber); background: var(--amber-soft); }
+    .response-content { min-height: 112px; max-height: 260px; margin: 0; padding: 9px; overflow: auto; border: 1px solid #aeb1b0; background: #2d333a; color: #edf0e8; font-family: var(--mono); font-size: 11px; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; }
+    .metadata-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); margin-top: 8px; border: 1px solid var(--line); border-right: 0; border-bottom: 0; }
+    .meta-item { min-width: 0; padding: 7px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); background: #f4f3ed; }
+    .meta-label { color: #777e84; font-size: 8px; font-weight: 800; }
+    .meta-value { margin-top: 3px; color: #2f363d; font-family: var(--mono); font-size: 10px; font-weight: 700; overflow-wrap: anywhere; }
+    .request-id-line { margin: 8px 0; color: #656d74; font-family: var(--mono); font-size: 9px; overflow-wrap: anywhere; }
+    .response-actions { display: flex; flex-wrap: wrap; gap: 5px; }
+    .pipeline-panel { margin-top: 10px; }
+    .pipeline-head { display: flex; align-items: center; gap: 9px; padding: 8px 11px; border-bottom: 1px solid var(--line); background: #efeee8; }
+    .pipeline { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); padding: 10px; }
+    .pipeline-stage { position: relative; min-width: 0; padding: 8px 16px 8px 8px; border: 1px solid var(--line); background: #f8f7f1; color: #47515a; font-size: 9px; font-weight: 800; text-align: center; }
+    .pipeline-stage:not(:last-child)::after { content: "→"; position: absolute; z-index: 2; right: -10px; top: 50%; width: 18px; transform: translateY(-50%); color: var(--blue); background: var(--panel); }
+    .pipeline-observation { padding: 0 11px 10px; color: var(--muted); font-family: var(--mono); font-size: 9px; line-height: 1.5; }
+    .notes { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+    .notice { padding: 9px 11px; color: #596168; font-size: 11px; line-height: 1.55; }
+    .notice strong { color: #343b42; }
     .hidden { display: none !important; }
-
-    @media (max-width: 850px) {
-      .hero { padding-top: 2.5rem; }
+    @media (max-width: 900px) {
+      .utility-row { flex-direction: column; gap: 12px; }
+      .utility-nav { justify-content: flex-start; }
       .workspace { grid-template-columns: 1fr; }
-      .empty-state { min-height: 220px; }
+      .mode-strip { grid-template-columns: 1fr; }
+      .mode-note { text-align: left; }
     }
-
     @media (max-width: 620px) {
-      .shell { width: min(100% - 1.1rem, 1180px); }
-      .topbar-inner { align-items: flex-start; flex-direction: column; padding: .75rem 0; }
-      nav { width: 100%; justify-content: space-between; }
-      .nav-link { padding: .5rem .35rem; font-size: .82rem; }
-      .hero { padding: 2rem 0 1.4rem; }
-      .hero-copy { font-size: .95rem; }
-      .workspace { gap: .8rem; }
-      .panel { padding: 1rem; border-radius: .7rem; }
-      .form-grid, .metadata-grid, .note-grid { grid-template-columns: 1fr; }
-      .button-row { align-items: stretch; flex-direction: column; }
-      button { width: 100%; }
+      .bar-inner, .console { width: min(100% - 16px, 1240px); }
+      .bar-inner { align-items: flex-start; flex-direction: column; gap: 5px; padding: 9px 0; }
+      .system-state { padding-left: 38px; }
+      .utility-nav { display: grid; grid-template-columns: 1fr 1fr; width: 100%; }
+      .utility-link { justify-content: center; }
+      .mode-buttons { display: grid; grid-template-columns: 1fr 1fr; }
+      .form-grid, .metadata-grid, .notes { grid-template-columns: 1fr; }
+      .form-footer { align-items: stretch; flex-direction: column; }
+      button.action { width: 100%; }
+      .response-actions { display: grid; grid-template-columns: 1fr; }
+      .pipeline { grid-template-columns: 1fr; gap: 4px; }
+      .pipeline-stage { padding: 7px; text-align: left; }
+      .pipeline-stage:not(:last-child)::after { content: "↓"; right: 8px; top: auto; bottom: -10px; transform: none; background: transparent; }
     }
   </style>
 </head>
 <body>
-  <header class="topbar">
-    <div class="shell topbar-inner">
-      <a class="brand" href="/" aria-label="ModelRoute homepage">
-        <span class="brand-mark" aria-hidden="true">MR</span>
-        <span>ModelRoute</span>
-      </a>
-      <nav aria-label="Project navigation">
-        <a class="nav-link" href="/dashboard">Metrics Dashboard</a>
-        <a class="nav-link" href="/docs">API Docs</a>
-        <a class="nav-link" href="/health">Health</a>
-      </nav>
+  <header class="system-bar">
+    <div class="bar-inner">
+      <div class="wordmark"><div class="mark" aria-hidden="true">MR</div><div class="wordmark-text">MODELROUTE <span>/ GATEWAY CONSOLE</span></div></div>
+      <div class="system-state"><span class="state-led" aria-hidden="true"></span>PUBLIC DEMO / ONLINE</div>
     </div>
   </header>
 
-  <main class="shell">
-    <section class="hero" aria-labelledby="page-title">
-      <p class="eyebrow">Public demo · MockProvider</p>
-      <h1 id="page-title">Multi-provider LLM gateway and observability platform</h1>
-      <p class="hero-copy">ModelRoute provides provider routing, Redis exact-response caching and rate limiting, bounded retry and fallback, and PostgreSQL observability behind one unified API. The public demo uses MockProvider so no commercial LLM credential is exposed or billed.</p>
-      <div class="system-tags" aria-label="Core system capabilities">
-        <span class="system-tag">FastAPI gateway</span>
-        <span class="system-tag">Redis cache + token bucket</span>
-        <span class="system-tag">PostgreSQL metrics</span>
+  <main class="console">
+    <section class="utility-row" aria-labelledby="page-title">
+      <div class="intro">
+        <p class="kicker">UNIFIED LLM REQUEST CONTROL PLANE</p>
+        <h1 id="page-title">Route, cache, protect, and observe model traffic.</h1>
+        <p class="lede">A compact FastAPI gateway demonstrating provider abstraction, exact Redis caching, atomic rate limiting, bounded retry/fallback, and PostgreSQL request observability.</p>
       </div>
+      <nav class="utility-nav" aria-label="Project navigation">
+        <a class="utility-link" href="https://github.com/ayushgoel001/ModelRoute" target="_blank" rel="noopener noreferrer"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 .8a11.5 11.5 0 0 0-3.64 22.41c.58.1.79-.25.79-.56v-2.23c-3.22.7-3.9-1.37-3.9-1.37-.53-1.34-1.29-1.7-1.29-1.7-1.05-.72.08-.7.08-.7 1.16.08 1.78 1.2 1.78 1.2 1.04 1.77 2.72 1.26 3.38.96.1-.75.4-1.26.74-1.55-2.57-.29-5.27-1.28-5.27-5.69 0-1.26.45-2.28 1.19-3.09-.12-.29-.52-1.47.11-3.05 0 0 .97-.31 3.16 1.18a10.97 10.97 0 0 1 5.76 0c2.2-1.49 3.16-1.18 3.16-1.18.63 1.58.23 2.76.11 3.05.74.81 1.19 1.83 1.19 3.09 0 4.42-2.71 5.39-5.29 5.68.42.36.79 1.06.79 2.14v3.18c0 .31.21.67.8.56A11.5 11.5 0 0 0 12 .8z"/></svg>GITHUB</a>
+        <a class="utility-link" href="/dashboard">METRICS</a>
+        <a class="utility-link" href="/docs">API DOCS</a>
+        <a class="utility-link" href="/health">HEALTH</a>
+      </nav>
     </section>
 
-    <section class="workspace" aria-label="Interactive gateway demo">
+    <section class="mode-strip" aria-labelledby="provider-mode-label">
+      <div id="provider-mode-label" class="strip-label">PROVIDER MODE</div>
+      <div class="mode-buttons" role="group" aria-label="Public demo provider">
+        <button id="mock-mode" class="mode-button" type="button" aria-pressed="true">MOCK DEMO</button>
+        <button id="gemini-mode" class="mode-button" type="button" aria-pressed="false" {% if not gemini_demo_available %}disabled aria-disabled="true"{% endif %}>GEMINI LIVE · LIMITED</button>
+      </div>
+      <div id="mode-note" class="mode-note">SAFE LOCAL SIMULATION / NO PROVIDER BILLING</div>
+    </section>
+
+    <section class="workspace" aria-label="Interactive gateway workspace">
       <article class="panel">
-        <div class="panel-header">
-          <div>
-            <h2>Request</h2>
-            <p class="panel-description">Send a request through the same normalized completion API used by every client.</p>
-          </div>
-        </div>
-
-        <form id="completion-form">
-          <div>
-            <label for="prompt">Prompt</label>
+        <div class="panel-head"><div class="panel-title"><span class="section-index">01 /</span><h2>Request</h2></div><div id="request-state" class="state-display">IDLE</div></div>
+        <div class="panel-body">
+          <form id="completion-form">
+            <label for="prompt"><span class="field-label">PROMPT / UTF-8 TEXT</span></label>
             <textarea id="prompt" name="prompt" required>Explain binary search in one sentence</textarea>
-          </div>
-
-          <div class="form-grid">
-            <div>
-              <label for="strategy">Strategy</label>
-              <select id="strategy" name="strategy">
-                <option value="fixed" selected>fixed</option>
-                <option value="cheapest">cheapest</option>
-                <option value="fastest">fastest</option>
-              </select>
-              <p class="field-hint">Public demo has one eligible provider.</p>
+            <div class="form-grid">
+              <div><label for="strategy"><span class="field-label">ROUTING STRATEGY</span></label><select id="strategy" name="strategy"><option value="fixed" selected>fixed</option><option value="cheapest">cheapest</option><option value="fastest">fastest</option></select><p id="strategy-help" class="field-help">MOCK IS THE PINNED PUBLIC PROVIDER</p></div>
+              <div><label for="temperature"><span class="field-label">TEMPERATURE</span></label><input id="temperature" name="temperature" type="number" value="0.2" min="0" max="2" step="0.1" required><p class="field-help">RANGE 0.0–2.0</p></div>
+              <div><label for="max-tokens"><span class="field-label">MAX TOKENS</span></label><input id="max-tokens" name="max_tokens" type="number" value="64" min="1" max="8192" step="1" required><p id="token-help" class="field-help">PUBLIC RANGE 1–8192</p></div>
             </div>
-            <div>
-              <label for="temperature">Temperature</label>
-              <input id="temperature" name="temperature" type="number" value="0.2" min="0" max="2" step="0.1" required>
-              <p class="field-hint">0.0–2.0</p>
-            </div>
-            <div>
-              <label for="max-tokens">Max tokens</label>
-              <input id="max-tokens" name="max_tokens" type="number" value="64" min="1" max="8192" step="1" required>
-              <p class="field-hint">1–8192</p>
-            </div>
-          </div>
-
-          <p class="cache-guidance" id="cache-guidance"><strong>Try the cache:</strong> submit the exact same request twice to see Redis exact-response caching in action.</p>
-
-          <div id="request-error" class="error-box hidden" role="alert"></div>
-
-          <div class="button-row">
-            <button id="submit-button" class="primary-button" type="submit">Send request</button>
-            <span id="request-status" class="request-status" role="status" aria-live="polite"></span>
-          </div>
-        </form>
+            <div id="request-error" class="error-box hidden" role="alert"></div>
+            <div class="form-footer"><span class="keyboard-hint">CTRL+ENTER / ⌘+ENTER TO SEND</span><button id="submit-button" class="action" type="submit">EXECUTE REQUEST</button></div>
+          </form>
+        </div>
       </article>
 
-      <article class="panel response-panel" aria-labelledby="response-title">
-        <div class="panel-header">
-          <div>
-            <h2 id="response-title">Response</h2>
-            <p class="panel-description">Normalized gateway output and request metadata.</p>
+      <article class="panel" aria-labelledby="response-title">
+        <div class="panel-head"><div class="panel-title"><span class="section-index">02 /</span><h2 id="response-title">Gateway Output</h2></div><span id="cache-badge" class="cache-badge hidden"></span></div>
+        <div class="panel-body">
+          <div id="empty-state" class="empty-state"><div><div class="empty-diagram" aria-hidden="true">□ → □ → □</div>AWAITING REQUEST<br>NO COMPLETION HAS BEEN EXECUTED</div></div>
+          <div id="result" class="hidden" aria-live="polite">
+            <div class="result-top"><span class="field-label">NORMALIZED RESPONSE CONTENT</span></div>
+            <pre id="response-content" class="response-content"></pre>
+            <div class="metadata-grid">
+              <div class="meta-item"><div class="meta-label">PROVIDER</div><div id="provider" class="meta-value"></div></div><div class="meta-item"><div class="meta-label">MODEL</div><div id="model" class="meta-value"></div></div><div class="meta-item"><div class="meta-label">LATENCY</div><div id="latency" class="meta-value"></div></div><div class="meta-item"><div class="meta-label">FALLBACK</div><div id="fallback" class="meta-value"></div></div><div class="meta-item"><div class="meta-label">INPUT TOKENS</div><div id="input-tokens" class="meta-value"></div></div><div class="meta-item"><div class="meta-label">OUTPUT TOKENS</div><div id="output-tokens" class="meta-value"></div></div>
+            </div>
+            <p class="request-id-line">REQUEST ID / <span id="request-id"></span></p>
+            <div class="response-actions"><button id="copy-response" class="action secondary" type="button">COPY RESPONSE</button><button id="copy-request-id" class="action secondary" type="button">COPY REQUEST ID</button><button id="repeat-button" class="action secondary" type="button">REPEAT EXACT REQUEST</button></div>
           </div>
-          <span id="cache-badge" class="cache-badge hidden"></span>
-        </div>
-
-        <div id="empty-state" class="empty-state">
-          <div>
-            <strong>No request sent yet</strong>
-            Submit the form to inspect the provider response, routing result, and cache status.
-          </div>
-        </div>
-
-        <div id="result" class="result hidden" aria-live="polite">
-          <div class="result-heading">
-            <strong>Generated content</strong>
-          </div>
-          <pre id="response-content" class="response-content"></pre>
-
-          <div class="metadata-grid">
-            <div class="metadata-item"><div class="metadata-label">Provider</div><div id="provider" class="metadata-value"></div></div>
-            <div class="metadata-item"><div class="metadata-label">Model</div><div id="model" class="metadata-value"></div></div>
-            <div class="metadata-item"><div class="metadata-label">Latency</div><div id="latency" class="metadata-value"></div></div>
-            <div class="metadata-item"><div class="metadata-label">Fallback</div><div id="fallback" class="metadata-value"></div></div>
-            <div class="metadata-item"><div class="metadata-label">Input tokens</div><div id="input-tokens" class="metadata-value"></div></div>
-            <div class="metadata-item"><div class="metadata-label">Output tokens</div><div id="output-tokens" class="metadata-value"></div></div>
-          </div>
-
-          <p class="request-id">Request ID: <span id="request-id"></span></p>
-          <button id="repeat-button" class="secondary-button" type="button">Send same request again</button>
         </div>
       </article>
     </section>
 
-    <section class="note-grid" aria-label="Demo notes">
-      <div class="note"><strong>Exact caching by design.</strong> Different wording produces a different cache key, even when two prompts have similar meaning.</div>
-      <div class="note"><strong>Demo only.</strong> Do not submit confidential or personal information. PostgreSQL does not persist raw prompts or generated content; successful MockProvider responses can remain temporarily in Redis for the configured cache TTL.</div>
+    <section class="pipeline-panel" aria-labelledby="pipeline-title">
+      <div class="pipeline-head"><span class="section-index">03 /</span><h2 id="pipeline-title">Request Pipeline</h2></div>
+      <div class="pipeline" aria-label="Gateway architecture"><div class="pipeline-stage">RATE LIMIT</div><div class="pipeline-stage">ROUTER</div><div class="pipeline-stage">EXACT CACHE</div><div class="pipeline-stage">PROVIDER</div><div class="pipeline-stage">METRICS</div></div>
+      <div id="pipeline-observation" class="pipeline-observation">OBSERVED / IDLE — RUN A REQUEST TO VIEW RETURNED ROUTE, CACHE, PROVIDER, AND FALLBACK STATE.</div>
+    </section>
+
+    <section class="notes" aria-label="Demo constraints">
+      <div class="notice"><strong>EXACT CACHE:</strong> repeat the same effective request to reuse a cached response. Different wording intentionally produces a different cache key.</div>
+      <div class="notice"><strong>PRIVACY:</strong> Demo only — do not submit confidential, personal, or sensitive information. PostgreSQL does not persist raw prompts or generated content. Cached responses may remain in Redis for the configured TTL and may be reused by another request with the same response-affecting identity. Gemini Live sends requests to Google’s Gemini API.</div>
     </section>
   </main>
 
   <script>
     (() => {
       "use strict";
-
       const endpoint = "/v1/chat/completions";
       const storageKey = "modelroute-demo-client-id";
+      const geminiDemoAvailable = {{ 'true' if gemini_demo_available else 'false' }};
+      const geminiOutputCap = {{ gemini_demo_max_output_tokens }};
+      const geminiPromptCap = {{ gemini_demo_max_prompt_chars }};
       const form = document.getElementById("completion-form");
+      const promptInput = document.getElementById("prompt");
+      const strategyInput = document.getElementById("strategy");
+      const maxTokensInput = document.getElementById("max-tokens");
       const submitButton = document.getElementById("submit-button");
       const repeatButton = document.getElementById("repeat-button");
-      const requestStatus = document.getElementById("request-status");
+      const mockModeButton = document.getElementById("mock-mode");
+      const geminiModeButton = document.getElementById("gemini-mode");
+      const requestState = document.getElementById("request-state");
       const errorBox = document.getElementById("request-error");
       const emptyState = document.getElementById("empty-state");
       const result = document.getElementById("result");
       const cacheBadge = document.getElementById("cache-badge");
+      let providerMode = "mock";
       let lastSuccessfulPayload = null;
       let inFlight = false;
 
       function createClientId() {
-        if (globalThis.crypto && typeof globalThis.crypto.randomUUID === "function") {
-          return globalThis.crypto.randomUUID();
-        }
+        if (globalThis.crypto && typeof globalThis.crypto.randomUUID === "function") return globalThis.crypto.randomUUID();
         return `demo-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
       }
-
       function getClientId() {
         try {
           let clientId = localStorage.getItem(storageKey);
-          if (!clientId) {
-            clientId = createClientId();
-            localStorage.setItem(storageKey, clientId);
-          }
+          if (!clientId) { clientId = createClientId(); localStorage.setItem(storageKey, clientId); }
           return clientId;
-        } catch (_error) {
-          return createClientId();
-        }
+        } catch (_error) { return createClientId(); }
       }
-
       const clientId = getClientId();
 
-      function currentPayload() {
-        return {
-          prompt: document.getElementById("prompt").value,
-          strategy: document.getElementById("strategy").value,
-          temperature: Number(document.getElementById("temperature").value),
-          max_tokens: Number(document.getElementById("max-tokens").value)
-        };
+      function setRequestState(state) {
+        requestState.textContent = state;
+        requestState.className = `state-display ${state.toLowerCase()}`;
       }
-
+      function setProviderMode(mode) {
+        if (mode === "gemini" && !geminiDemoAvailable) return;
+        providerMode = mode;
+        const geminiSelected = mode === "gemini";
+        mockModeButton.setAttribute("aria-pressed", String(!geminiSelected));
+        geminiModeButton.setAttribute("aria-pressed", String(geminiSelected));
+        strategyInput.disabled = geminiSelected;
+        if (geminiSelected) {
+          strategyInput.value = "fixed";
+          maxTokensInput.max = String(geminiOutputCap);
+          maxTokensInput.value = String(Math.min(Number(maxTokensInput.value), geminiOutputCap));
+          promptInput.maxLength = geminiPromptCap;
+          document.getElementById("strategy-help").textContent = "GEMINI IS PINNED / FIXED ROUTE";
+          document.getElementById("token-help").textContent = `SERVER CAP 1–${geminiOutputCap}`;
+          document.getElementById("mode-note").textContent = "REAL GEMINI API / LOW THINKING / STRICT REDIS QUOTA";
+        } else {
+          strategyInput.disabled = false;
+          maxTokensInput.max = "8192";
+          promptInput.removeAttribute("maxlength");
+          document.getElementById("strategy-help").textContent = "MOCK IS THE PINNED PUBLIC PROVIDER";
+          document.getElementById("token-help").textContent = "PUBLIC RANGE 1–8192";
+          document.getElementById("mode-note").textContent = geminiDemoAvailable ? "SAFE LOCAL SIMULATION / GEMINI AVAILABLE BY OPT-IN" : "SAFE LOCAL SIMULATION / GEMINI LIVE CURRENTLY UNAVAILABLE";
+        }
+      }
+      function currentPayload() {
+        return { prompt: promptInput.value, strategy: providerMode === "gemini" ? "fixed" : strategyInput.value, temperature: Number(document.getElementById("temperature").value), max_tokens: Number(maxTokensInput.value), preferred_provider: providerMode };
+      }
       function setLoading(loading) {
         inFlight = loading;
         submitButton.disabled = loading;
         repeatButton.disabled = loading;
-        submitButton.textContent = loading ? "Sending request…" : "Send request";
-        requestStatus.textContent = loading ? "Calling the gateway" : "";
+        mockModeButton.disabled = loading;
+        geminiModeButton.disabled = loading || !geminiDemoAvailable;
+        strategyInput.disabled = loading || providerMode === "gemini";
+        submitButton.textContent = loading ? "REQUEST IN FLIGHT…" : "EXECUTE REQUEST";
         form.setAttribute("aria-busy", String(loading));
       }
-
-      function hideError() {
-        errorBox.textContent = "";
-        errorBox.classList.add("hidden");
-      }
-
-      function showError(message) {
-        errorBox.textContent = message;
-        errorBox.classList.remove("hidden");
-      }
-
+      function hideError() { errorBox.textContent = ""; errorBox.classList.add("hidden"); }
+      function showError(message) { errorBox.textContent = message; errorBox.classList.remove("hidden"); }
       function errorMessage(status, payload) {
         if (status === 422) {
+          if (payload && typeof payload.detail === "string") return `HTTP 422 / ${payload.detail}`;
           const details = Array.isArray(payload && payload.detail) ? payload.detail : [];
-          const messages = details
-            .map((item) => item && typeof item.msg === "string" ? item.msg : null)
-            .filter(Boolean);
-          const explanation = messages.length ? messages.join("; ") : "Check the request fields and try again.";
-          return `Validation failed (HTTP 422): ${explanation}`;
+          const messages = details.map((item) => item && item.msg).filter((message) => typeof message === "string");
+          return `HTTP 422 / ${messages.length ? messages.join("; ") : "CHECK REQUEST PARAMETERS"}`;
         }
-        if (status === 429) {
-          return "Rate limit reached (HTTP 429). Wait briefly, then try again.";
-        }
-        if (status === 503) {
-          return "A required gateway dependency is temporarily unavailable (HTTP 503). Try again shortly.";
-        }
-        return `The gateway could not complete the request (HTTP ${status}).`;
+        if (status === 403) return "HTTP 403 / GEMINI LIVE IS NOT ENABLED ON THIS SERVER";
+        if (status === 429 && payload && typeof payload.detail === "string") return `HTTP 429 / ${payload.detail}`;
+        if (status === 429) return "HTTP 429 / REQUEST LIMIT REACHED — RETRY LATER";
+        if (status === 503 && payload && typeof payload.detail === "string") return `HTTP 503 / ${payload.detail}`;
+        if (status === 503) return "HTTP 503 / GATEWAY DEPENDENCY TEMPORARILY UNAVAILABLE";
+        return `HTTP ${status} / GATEWAY REQUEST FAILED`;
       }
-
-      function renderResponse(data) {
+      function renderResponse(data, payload) {
         emptyState.classList.add("hidden");
         result.classList.remove("hidden");
         cacheBadge.classList.remove("hidden", "cache-hit", "cache-miss");
@@ -616,59 +323,44 @@
         document.getElementById("provider").textContent = data.provider;
         document.getElementById("model").textContent = data.model;
         document.getElementById("latency").textContent = `${Number(data.latency_ms).toFixed(2)} ms`;
-        document.getElementById("fallback").textContent = data.fallback_used ? "Yes" : "No";
+        document.getElementById("fallback").textContent = data.fallback_used ? "YES" : "NO";
         document.getElementById("input-tokens").textContent = String(data.input_tokens);
         document.getElementById("output-tokens").textContent = String(data.output_tokens);
         document.getElementById("request-id").textContent = data.request_id;
+        document.getElementById("pipeline-observation").textContent = [`OBSERVED / ROUTE ${String(payload.strategy).toUpperCase()}`, `CACHE ${data.cache_hit ? "HIT" : "MISS"}`, `PROVIDER ${String(data.provider).toUpperCase()}`, `FALLBACK ${data.fallback_used ? "YES" : "NO"}`].join("  ·  ");
       }
-
       async function sendRequest(payload) {
         if (inFlight) return;
-        hideError();
-        setLoading(true);
-
+        hideError(); setRequestState("SENDING"); setLoading(true);
         try {
-          const response = await fetch(endpoint, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "X-Client-ID": clientId
-            },
-            body: JSON.stringify(payload)
-          });
-
+          const response = await fetch(endpoint, { method: "POST", headers: { "Content-Type": "application/json", "X-Client-ID": clientId }, body: JSON.stringify(payload) });
           let data = null;
-          try {
-            data = await response.json();
-          } catch (_error) {
-            data = null;
-          }
-
-          if (!response.ok) {
-            showError(errorMessage(response.status, data));
-            return;
-          }
-
-          lastSuccessfulPayload = { ...payload };
-          renderResponse(data);
+          try { data = await response.json(); } catch (_error) { data = null; }
+          if (!response.ok) { showError(errorMessage(response.status, data)); setRequestState("ERROR"); return; }
+          lastSuccessfulPayload = JSON.parse(JSON.stringify(payload));
+          renderResponse(data, payload);
+          setRequestState("COMPLETE");
         } catch (_error) {
-          showError("The request could not reach the gateway. Check the connection and try again.");
-        } finally {
-          setLoading(false);
-        }
+          showError("NETWORK ERROR / THE GATEWAY COULD NOT BE REACHED"); setRequestState("ERROR");
+        } finally { setLoading(false); }
+      }
+      async function copyValue(value, button) {
+        try {
+          await navigator.clipboard.writeText(value);
+          const original = button.textContent;
+          button.textContent = "COPIED";
+          globalThis.setTimeout(() => { button.textContent = original; }, 1200);
+        } catch (_error) { showError("COPY FAILED / SELECT THE VALUE MANUALLY"); }
       }
 
-      form.addEventListener("submit", (event) => {
-        event.preventDefault();
-        if (!form.reportValidity()) return;
-        sendRequest(currentPayload());
-      });
-
-      repeatButton.addEventListener("click", () => {
-        if (lastSuccessfulPayload) {
-          sendRequest({ ...lastSuccessfulPayload });
-        }
-      });
+      form.addEventListener("submit", (event) => { event.preventDefault(); if (form.reportValidity()) sendRequest(currentPayload()); });
+      promptInput.addEventListener("keydown", (event) => { if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) { event.preventDefault(); form.requestSubmit(); } });
+      mockModeButton.addEventListener("click", () => setProviderMode("mock"));
+      geminiModeButton.addEventListener("click", () => setProviderMode("gemini"));
+      repeatButton.addEventListener("click", () => { if (lastSuccessfulPayload) sendRequest(JSON.parse(JSON.stringify(lastSuccessfulPayload))); });
+      document.getElementById("copy-response").addEventListener("click", (event) => { copyValue(document.getElementById("response-content").textContent, event.currentTarget); });
+      document.getElementById("copy-request-id").addEventListener("click", (event) => { copyValue(document.getElementById("request-id").textContent, event.currentTarget); });
+      setProviderMode("mock");
     })();
   </script>
 </body>

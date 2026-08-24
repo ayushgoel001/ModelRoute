@@ -1,4 +1,7 @@
-from app.config import Settings
+import pytest
+from pydantic import ValidationError
+
+from app.config import PUBLIC_GEMINI_DEMO_MODEL, Settings
 
 
 def test_gemini_introductory_pricing_defaults(monkeypatch) -> None:
@@ -36,3 +39,20 @@ def test_mock_latency_defaults_to_zero_and_is_environment_configurable(
 
     monkeypatch.setenv("MOCK_PROVIDER_LATENCY_MS", "50")
     assert Settings(_env_file=None).mock_provider_latency_ms == 50
+
+
+def test_public_gemini_demo_has_safe_disabled_defaults(monkeypatch) -> None:
+    monkeypatch.delenv("PUBLIC_GEMINI_DEMO_ENABLED", raising=False)
+    settings = Settings(_env_file=None)
+
+    assert settings.public_gemini_demo_enabled is False
+    assert settings.gemini_model == PUBLIC_GEMINI_DEMO_MODEL
+    assert settings.public_gemini_demo_max_output_tokens == 256
+    assert settings.public_gemini_demo_max_prompt_chars == 2_000
+    assert settings.public_gemini_demo_client_limit == 2
+    assert settings.public_gemini_demo_global_limit == 15
+
+
+def test_public_gemini_output_cap_cannot_be_configured_above_256() -> None:
+    with pytest.raises(ValidationError):
+        Settings(_env_file=None, public_gemini_demo_max_output_tokens=257)

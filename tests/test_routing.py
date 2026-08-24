@@ -94,6 +94,29 @@ def test_mock_can_be_explicitly_enabled() -> None:
     assert names(candidates) == ["mock"]
 
 
+@pytest.mark.parametrize("strategy", ["fixed", "cheapest", "fastest"])
+def test_request_preference_pins_one_available_provider(strategy: str) -> None:
+    candidates = router(
+        [FakeProvider("openai"), FakeProvider("gemini"), FakeProvider("mock")]
+    ).route(strategy, REQUEST, preferred_provider="gemini")
+
+    assert names(candidates) == ["gemini"]
+
+
+def test_explicit_mock_preference_is_not_an_implicit_fallback() -> None:
+    provider_router = router(
+        [FakeProvider("openai"), FakeProvider("mock")]
+    )
+
+    with pytest.raises(NoEligibleProviderError):
+        provider_router.route("fixed", REQUEST, preferred_provider="mock")
+
+    candidates = router(
+        [FakeProvider("openai"), FakeProvider("mock")], allow_mock=True
+    ).route("fixed", REQUEST, preferred_provider="mock")
+    assert names(candidates) == ["mock"]
+
+
 def test_latency_tracker_uses_ewma() -> None:
     tracker = LatencyTracker(alpha=0.25, initial_latency_ms=900)
 

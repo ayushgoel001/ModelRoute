@@ -297,5 +297,14 @@ def test_dashboard_renders_summary_without_external_assets(app_factory) -> None:
 
     assert response_value.status_code == 200
     assert "ModelRoute" in response_value.text
-    assert "Total Requests" in response_value.text
+    assert 'id="total-requests"' in response_value.text
+    assert 'id="p50-latency"' in response_value.text
+    assert 'id="p95-latency"' in response_value.text
+    assert 'id="recent-rows"' in response_value.text
+    assert 'id="cache-hit-segment"' in response_value.text
+    assert 'id="latency-chart"' in response_value.text
+    assert 'const summaryEndpoint = "/v1/metrics/summary"' in response_value.text
+    assert 'const recentEndpoint = "/v1/metrics/recent?limit=20"' in response_value.text
+    assert "const refreshIntervalMs = 15000" in response_value.text
+    assert "Request ID" in response_value.text
     assert "https://" not in response_value.text

@@ -3,44 +3,270 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>ModelRoute metrics</title>
+  <meta name="description" content="ModelRoute request observability console backed by PostgreSQL metrics.">
+  <title>ModelRoute / Metrics Console</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='6' fill='%232c3748'/%3E%3Cpath d='M14 45V19h7l11 14 11-14h7v26h-7V29L32 43 21 29v16z' fill='%23f2f0e9'/%3E%3C/svg%3E">
   <style>
-    :root { color-scheme: light; font-family: Inter, system-ui, sans-serif; color: #172033; background: #f5f7fb; }
-    body { margin: 0; padding: 2rem; }
-    main { max-width: 1200px; margin: auto; }
-    h1 { margin: 0 0 .25rem; } .subtitle { color: #667085; margin: 0 0 1.5rem; }
-    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: .9rem; }
-    .card, section { background: white; border: 1px solid #e4e7ec; border-radius: .7rem; box-shadow: 0 1px 2px #1018280d; }
-    .card { padding: 1rem; } .label { color: #667085; font-size: .8rem; } .value { font-size: 1.45rem; font-weight: 650; margin-top: .35rem; }
-    section { margin-top: 1.25rem; padding: 1rem; overflow-x: auto; } h2 { font-size: 1.05rem; margin-top: 0; }
-    table { width: 100%; border-collapse: collapse; font-size: .86rem; }
-    th, td { padding: .65rem; text-align: left; border-bottom: 1px solid #eaecf0; white-space: nowrap; }
-    th { color: #475467; font-weight: 600; } .empty { color: #667085; }
+    :root {
+      color-scheme: light;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: #242a32;
+      background: #e9e8e2;
+      --paper: #f5f4ee;
+      --panel: #fbfaf5;
+      --line: #c9c8c0;
+      --line-dark: #9ea2a5;
+      --muted: #626a73;
+      --blue: #355f82;
+      --blue-soft: #e5edf3;
+      --green: #2f6b4f;
+      --green-soft: #e1eee7;
+      --amber: #8a6428;
+      --amber-soft: #f4ead3;
+      --red: #8a3f3f;
+      --red-soft: #f3e3e0;
+      --mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; background: #e9e8e2; }
+    a { color: inherit; }
+    .system-bar { min-height: 54px; border-bottom: 1px solid #8d9398; color: #f4f3ed; background: #2c3748; }
+    .bar-inner, main { width: min(1280px, calc(100% - 28px)); margin: 0 auto; }
+    .bar-inner { min-height: 54px; display: flex; align-items: center; justify-content: space-between; gap: 18px; }
+    .wordmark { display: flex; align-items: center; gap: 10px; }
+    .mark { width: 28px; height: 28px; display: grid; place-items: center; border: 1px solid #8294a5; color: #dce8f0; font: 700 10px var(--mono); }
+    .wordmark-text { font: 700 13px var(--mono); letter-spacing: .04em; }
+    .wordmark-text span { color: #aeb9c3; font-weight: 400; }
+    .nav { display: flex; gap: 5px; }
+    .nav a { padding: 6px 8px; border: 1px solid #657485; color: #e4e9ed; font: 700 9px var(--mono); letter-spacing: .04em; text-decoration: none; }
+    .nav a:hover { border-color: #a9bac8; background: #38475a; }
+    main { padding: 17px 0 30px; }
+    .page-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; margin-bottom: 12px; }
+    .kicker { margin: 0 0 4px; color: var(--blue); font: 700 10px var(--mono); letter-spacing: .12em; }
+    h1 { margin: 0; font-size: clamp(21px, 3vw, 28px); letter-spacing: -.025em; }
+    .subtitle { margin: 5px 0 0; color: var(--muted); font-size: 12px; }
+    .refresh-panel { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; color: var(--muted); font: 700 9px var(--mono); letter-spacing: .05em; }
+    .refresh-state { display: flex; align-items: center; gap: 6px; color: var(--green); }
+    .refresh-state::before { content: ""; width: 6px; height: 6px; background: currentColor; }
+    .refresh-state.loading { color: var(--blue); }
+    .refresh-state.error { color: var(--red); }
+    .kpi-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 7px; }
+    .kpi, .section { border: 1px solid var(--line); background: var(--panel); box-shadow: 1px 1px 0 rgba(36, 42, 50, .05); }
+    .kpi { min-width: 0; padding: 9px 10px; }
+    .kpi-label, .section-number, .chart-label { color: #70777d; font: 800 8px var(--mono); letter-spacing: .07em; text-transform: uppercase; }
+    .kpi-value { margin-top: 4px; color: #2e353c; font: 700 clamp(15px, 2vw, 20px) var(--mono); overflow-wrap: anywhere; }
+    .kpi-sub { min-height: 11px; margin-top: 3px; color: #80868b; font: 9px var(--mono); }
+    .chart-grid { display: grid; grid-template-columns: .8fr 1.2fr; gap: 8px; margin-top: 8px; }
+    .section { min-width: 0; margin-top: 8px; }
+    .chart-grid .section { margin-top: 0; }
+    .section-head { min-height: 39px; display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 10px; border-bottom: 1px solid var(--line); background: #efeee8; }
+    .section-title { display: flex; align-items: baseline; gap: 8px; }
+    .section-number { color: var(--blue); }
+    h2 { margin: 0; color: #353c43; font: 700 11px var(--mono); letter-spacing: .055em; text-transform: uppercase; }
+    .section-meta { color: #797f84; font: 9px var(--mono); }
+    .section-body { padding: 10px; }
+    .cache-chart { display: flex; height: 24px; overflow: hidden; border: 1px solid #aeb1b0; background: #ecebe6; }
+    .cache-hit-segment { width: 0; background: #58836a; }
+    .cache-miss-segment { width: 100%; background: #c6a365; }
+    .cache-legend { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; margin-top: 9px; }
+    .legend-item { padding: 7px; border: 1px solid var(--line); background: #f4f3ed; }
+    .legend-value { margin-top: 3px; font: 700 14px var(--mono); }
+    .legend-hit .legend-value { color: var(--green); }
+    .legend-miss .legend-value { color: var(--amber); }
+    .chart-note { margin: 8px 0 0; color: #777d82; font-size: 9px; line-height: 1.45; }
+    .latency-chart { min-height: 92px; display: flex; align-items: stretch; gap: 4px; padding-top: 5px; }
+    .latency-bar-wrap { min-width: 0; flex: 1; display: flex; flex-direction: column; justify-content: flex-end; align-items: stretch; gap: 3px; }
+    .latency-value { color: #6b737a; font: 8px var(--mono); text-align: center; white-space: nowrap; overflow: hidden; }
+    .latency-bar { min-height: 2px; background: #6889a3; border-top: 1px solid #43637d; }
+    .latency-index { color: #8b9094; font: 7px var(--mono); text-align: center; }
+    .empty-chart { width: 100%; display: grid; place-items: center; color: #7d8388; font: 9px var(--mono); }
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 10px; }
+    th, td { padding: 7px 8px; border-bottom: 1px solid #deddd6; text-align: left; white-space: nowrap; }
+    th { color: #626a71; background: #f3f2ec; font: 800 8px var(--mono); letter-spacing: .055em; text-transform: uppercase; }
+    td { color: #424950; }
+    tbody tr:hover { background: #f7f6f0; }
+    .mono { font-family: var(--mono); }
+    .status, .cache { display: inline-flex; min-height: 20px; align-items: center; padding: 2px 5px; border: 1px solid; font: 800 8px var(--mono); letter-spacing: .04em; }
+    .status-success { border-color: #91ad9a; color: var(--green); background: var(--green-soft); }
+    .status-error { border-color: #c89b96; color: var(--red); background: var(--red-soft); }
+    .cache-hit { border-color: #91ad9a; color: var(--green); background: var(--green-soft); }
+    .cache-miss { border-color: #c7aa74; color: var(--amber); background: var(--amber-soft); }
+    .empty { padding: 16px; color: #777d82; font-family: var(--mono); text-align: center; }
+    @media (max-width: 1000px) { .kpi-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+    @media (max-width: 760px) {
+      .chart-grid { grid-template-columns: 1fr; }
+      .page-head { align-items: flex-start; flex-direction: column; }
+      .refresh-panel { align-items: flex-start; }
+    }
+    @media (max-width: 580px) {
+      .bar-inner, main { width: min(100% - 16px, 1280px); }
+      .bar-inner { align-items: flex-start; flex-direction: column; gap: 7px; padding: 9px 0; }
+      .nav { width: 100%; }
+      .nav a { flex: 1; text-align: center; }
+      .kpi-grid { grid-template-columns: 1fr 1fr; }
+    }
   </style>
 </head>
-<body><main>
-  <h1>ModelRoute</h1><p class="subtitle">Request observability</p>
-  <div class="cards">
-    <div class="card"><div class="label">Total Requests</div><div class="value">{{ summary.total_requests }}</div></div>
-    <div class="card"><div class="label">Success Rate</div><div class="value">{{ '%.1f'|format(summary.success_rate * 100) }}%</div></div>
-    <div class="card"><div class="label">Cache Hit Rate</div><div class="value">{{ '%.1f'|format(summary.cache_hit_rate * 100) }}%</div></div>
-    <div class="card"><div class="label">p50 Latency</div><div class="value">{{ '%.1f'|format(summary.p50_latency_ms) }} ms</div></div>
-    <div class="card"><div class="label">p95 Latency</div><div class="value">{{ '%.1f'|format(summary.p95_latency_ms) }} ms</div></div>
-    <div class="card"><div class="label">Estimated Cost</div><div class="value">${{ '%.6f'|format(summary.estimated_cost_usd) }}</div></div>
-    <div class="card"><div class="label">Fallback Count</div><div class="value">{{ summary.fallback_count }}</div></div>
-    <div class="card"><div class="label">Input Tokens</div><div class="value">{{ summary.input_tokens }}</div></div>
-    <div class="card"><div class="label">Output Tokens</div><div class="value">{{ summary.output_tokens }}</div></div>
-  </div>
-  <section><h2>Provider usage</h2>
-    <table><thead><tr><th>Provider</th><th>Model</th><th>Requests</th><th>Successes</th><th>Avg latency</th><th>Tokens in/out</th><th>Estimated cost</th></tr></thead><tbody>
-    {% for item in summary.providers %}<tr><td>{{ item.provider }}</td><td>{{ item.model }}</td><td>{{ item.request_count }}</td><td>{{ item.success_count }}</td><td>{{ '%.1f'|format(item.average_latency_ms) }} ms</td><td>{{ item.input_tokens }} / {{ item.output_tokens }}</td><td>${{ '%.6f'|format(item.estimated_cost_usd) }}</td></tr>
-    {% else %}<tr><td class="empty" colspan="7">No provider metrics yet.</td></tr>{% endfor %}
-    </tbody></table>
-  </section>
-  <section><h2>Recent requests</h2>
-    <table><thead><tr><th>Time (UTC)</th><th>Provider / model</th><th>Status</th><th>Latency</th><th>Cache</th><th>Fallback</th><th>Cost</th></tr></thead><tbody>
-    {% for item in recent %}<tr><td>{{ item.timestamp }}</td><td>{{ item.provider or '—' }} / {{ item.model or '—' }}</td><td>{{ item.status }}</td><td>{{ '%.1f'|format(item.latency_ms) }} ms</td><td>{{ 'yes' if item.cache_hit else 'no' }}</td><td>{{ 'yes' if item.fallback_used else 'no' }}</td><td>${{ '%.6f'|format(item.estimated_cost_usd) }}</td></tr>
-    {% else %}<tr><td class="empty" colspan="7">No requests recorded yet.</td></tr>{% endfor %}
-    </tbody></table>
-  </section>
-</main></body></html>
+<body>
+  <header class="system-bar">
+    <div class="bar-inner">
+      <div class="wordmark"><div class="mark" aria-hidden="true">MR</div><div class="wordmark-text">MODELROUTE <span>/ METRICS CONSOLE</span></div></div>
+      <nav class="nav" aria-label="Project navigation"><a href="/">GATEWAY</a><a href="/docs">API DOCS</a><a href="/health">HEALTH</a></nav>
+    </div>
+  </header>
+
+  <main>
+    <section class="page-head" aria-labelledby="page-title">
+      <div><p class="kicker">POSTGRESQL REQUEST OBSERVABILITY</p><h1 id="page-title">Gateway operating metrics</h1><p class="subtitle">Aggregate and recent request telemetry. Raw prompts and generated content are not persisted.</p></div>
+      <div class="refresh-panel"><div id="refresh-state" class="refresh-state">AUTO REFRESH / READY</div><div>INTERVAL / 15 SECONDS</div><div>LAST UPDATED / <span id="last-updated">SERVER RENDER</span></div></div>
+    </section>
+
+    <section class="kpi-grid" aria-label="Gateway key performance indicators">
+      <article class="kpi"><div class="kpi-label">TOTAL REQUESTS</div><div id="total-requests" class="kpi-value">{{ summary.total_requests }}</div><div class="kpi-sub">RECORDED EVENTS</div></article>
+      <article class="kpi"><div class="kpi-label">SUCCESS RATE</div><div id="success-rate" class="kpi-value">{{ '%.1f'|format(summary.success_rate * 100) }}%</div><div id="successful-requests" class="kpi-sub">{{ summary.successful_requests }} SUCCESSFUL</div></article>
+      <article class="kpi"><div class="kpi-label">CACHE HIT RATE</div><div id="cache-hit-rate" class="kpi-value">{{ '%.1f'|format(summary.cache_hit_rate * 100) }}%</div><div id="cache-hits" class="kpi-sub">{{ summary.cache_hits }} HITS</div></article>
+      <article class="kpi"><div class="kpi-label">FALLBACK COUNT</div><div id="fallback-count" class="kpi-value">{{ summary.fallback_count }}</div><div class="kpi-sub">SECONDARY ROUTES</div></article>
+      <article class="kpi"><div class="kpi-label">AVERAGE LATENCY</div><div id="average-latency" class="kpi-value">{{ '%.1f'|format(summary.average_latency_ms) }} ms</div><div class="kpi-sub">END-TO-END</div></article>
+      <article class="kpi"><div class="kpi-label">P50 LATENCY</div><div id="p50-latency" class="kpi-value">{{ '%.1f'|format(summary.p50_latency_ms) }} ms</div><div class="kpi-sub">MEDIAN</div></article>
+      <article class="kpi"><div class="kpi-label">P95 LATENCY</div><div id="p95-latency" class="kpi-value">{{ '%.1f'|format(summary.p95_latency_ms) }} ms</div><div class="kpi-sub">TAIL</div></article>
+      <article class="kpi"><div class="kpi-label">ESTIMATED COST</div><div id="estimated-cost" class="kpi-value">${{ '%.6f'|format(summary.estimated_cost_usd) }}</div><div class="kpi-sub">USD / CACHE HITS $0</div></article>
+      <article class="kpi"><div class="kpi-label">INPUT TOKENS</div><div id="input-tokens" class="kpi-value">{{ summary.input_tokens }}</div><div class="kpi-sub">NORMALIZED USAGE</div></article>
+      <article class="kpi"><div class="kpi-label">OUTPUT TOKENS</div><div id="output-tokens" class="kpi-value">{{ summary.output_tokens }}</div><div class="kpi-sub">NORMALIZED USAGE</div></article>
+    </section>
+
+    <div class="chart-grid">
+      <section class="section" aria-labelledby="cache-chart-title">
+        <div class="section-head"><div class="section-title"><span class="section-number">01 /</span><h2 id="cache-chart-title">Cache outcomes</h2></div><span class="section-meta">ALL RECORDED REQUESTS</span></div>
+        <div class="section-body">
+          <div class="cache-chart" role="img" aria-label="Cache hits and non-hits"><div id="cache-hit-segment" class="cache-hit-segment" style="width: {{ summary.cache_hit_rate * 100 }}%"></div><div id="cache-miss-segment" class="cache-miss-segment" style="width: {{ 100 - (summary.cache_hit_rate * 100) }}%"></div></div>
+          <div class="cache-legend"><div class="legend-item legend-hit"><div class="chart-label">HIT</div><div id="chart-cache-hits" class="legend-value">{{ summary.cache_hits }}</div></div><div class="legend-item legend-miss"><div class="chart-label">NON-HIT</div><div id="chart-cache-misses" class="legend-value">{{ summary.total_requests - summary.cache_hits }}</div></div></div>
+          <p class="chart-note">NON-HIT includes recorded requests that did not return from cache, including errors.</p>
+        </div>
+      </section>
+
+      <section class="section" aria-labelledby="latency-chart-title">
+        <div class="section-head"><div class="section-title"><span class="section-number">02 /</span><h2 id="latency-chart-title">Recent request latency</h2></div><span class="section-meta">LATEST 12 / ms</span></div>
+        <div class="section-body"><div id="latency-chart" class="latency-chart" role="img" aria-label="Recent request latency bars"><div class="empty-chart">LOADING RECENT LATENCY…</div></div></div>
+      </section>
+    </div>
+
+    <section class="section" aria-labelledby="provider-title">
+      <div class="section-head"><div class="section-title"><span class="section-number">03 /</span><h2 id="provider-title">Provider usage</h2></div><span class="section-meta">PERSISTED AGGREGATES</span></div>
+      <div class="table-wrap"><table><thead><tr><th>Provider</th><th>Model</th><th>Requests</th><th>Successes</th><th>Avg latency</th><th>Input tokens</th><th>Output tokens</th><th>Estimated cost</th></tr></thead><tbody id="provider-rows">
+        {% for item in summary.providers %}<tr><td class="mono">{{ item.provider }}</td><td class="mono">{{ item.model }}</td><td>{{ item.request_count }}</td><td>{{ item.success_count }}</td><td class="mono">{{ '%.1f'|format(item.average_latency_ms) }} ms</td><td>{{ item.input_tokens }}</td><td>{{ item.output_tokens }}</td><td class="mono">${{ '%.6f'|format(item.estimated_cost_usd) }}</td></tr>{% else %}<tr><td class="empty" colspan="8">NO PROVIDER METRICS RECORDED</td></tr>{% endfor %}
+      </tbody></table></div>
+    </section>
+
+    <section class="section" aria-labelledby="recent-title">
+      <div class="section-head"><div class="section-title"><span class="section-number">04 /</span><h2 id="recent-title">Recent requests</h2></div><span class="section-meta">LATEST 20 / NO PROMPT CONTENT</span></div>
+      <div class="table-wrap"><table><thead><tr><th>Timestamp</th><th>Status</th><th>Provider / Model</th><th>Route</th><th>Latency</th><th>Cache</th><th>Fallback</th><th>Tokens In / Out</th><th>Cost</th><th>Request ID</th></tr></thead><tbody id="recent-rows">
+        {% for item in recent %}<tr data-latency="{{ item.latency_ms }}" data-request-id="{{ item.request_id }}"><td class="mono">{{ item.timestamp }}</td><td><span class="status {{ 'status-success' if item.status == 'success' else 'status-error' }}">{{ item.status|upper }}</span></td><td class="mono">{{ item.provider or '—' }} / {{ item.model or '—' }}</td><td class="mono">{{ item.routing_strategy }}</td><td class="mono">{{ '%.1f'|format(item.latency_ms) }} ms</td><td><span class="cache {{ 'cache-hit' if item.cache_hit else 'cache-miss' }}">{{ 'HIT' if item.cache_hit else 'MISS' }}</span></td><td class="mono">{{ 'YES' if item.fallback_used else 'NO' }}</td><td class="mono">{{ item.input_tokens }} / {{ item.output_tokens }}</td><td class="mono">${{ '%.6f'|format(item.estimated_cost_usd) }}</td><td class="mono">{{ item.request_id }}</td></tr>{% else %}<tr><td class="empty" colspan="10">NO REQUESTS RECORDED</td></tr>{% endfor %}
+      </tbody></table></div>
+    </section>
+  </main>
+
+  <script>
+    (() => {
+      "use strict";
+      const summaryEndpoint = "/v1/metrics/summary";
+      const recentEndpoint = "/v1/metrics/recent?limit=20";
+      const refreshIntervalMs = 15000;
+      const refreshState = document.getElementById("refresh-state");
+
+      function number(value, digits = 0) { return Number(value || 0).toFixed(digits); }
+      function setText(id, value) { document.getElementById(id).textContent = value; }
+      function cell(row, value, className = "") { const item = document.createElement("td"); item.textContent = value; if (className) item.className = className; row.appendChild(item); return item; }
+      function badgeCell(row, value, className) { const item = document.createElement("td"); const badge = document.createElement("span"); badge.className = className; badge.textContent = value; item.appendChild(badge); row.appendChild(item); }
+
+      function renderSummary(summary) {
+        setText("total-requests", String(summary.total_requests));
+        setText("success-rate", `${number(summary.success_rate * 100, 1)}%`);
+        setText("successful-requests", `${summary.successful_requests} SUCCESSFUL`);
+        setText("cache-hit-rate", `${number(summary.cache_hit_rate * 100, 1)}%`);
+        setText("cache-hits", `${summary.cache_hits} HITS`);
+        setText("fallback-count", String(summary.fallback_count));
+        setText("average-latency", `${number(summary.average_latency_ms, 1)} ms`);
+        setText("p50-latency", `${number(summary.p50_latency_ms, 1)} ms`);
+        setText("p95-latency", `${number(summary.p95_latency_ms, 1)} ms`);
+        setText("estimated-cost", `$${number(summary.estimated_cost_usd, 6)}`);
+        setText("input-tokens", String(summary.input_tokens));
+        setText("output-tokens", String(summary.output_tokens));
+        const total = Math.max(Number(summary.total_requests) || 0, 0);
+        const hits = Math.min(Math.max(Number(summary.cache_hits) || 0, 0), total);
+        const nonHits = total - hits;
+        const hitPercent = total ? (hits / total) * 100 : 0;
+        document.getElementById("cache-hit-segment").style.width = `${hitPercent}%`;
+        document.getElementById("cache-miss-segment").style.width = `${100 - hitPercent}%`;
+        setText("chart-cache-hits", String(hits));
+        setText("chart-cache-misses", String(nonHits));
+        renderProviders(Array.isArray(summary.providers) ? summary.providers : []);
+      }
+
+      function renderProviders(providers) {
+        const body = document.getElementById("provider-rows");
+        body.replaceChildren();
+        if (!providers.length) { const row = document.createElement("tr"); const item = cell(row, "NO PROVIDER METRICS RECORDED", "empty"); item.colSpan = 8; body.appendChild(row); return; }
+        providers.forEach((provider) => {
+          const row = document.createElement("tr");
+          cell(row, provider.provider, "mono"); cell(row, provider.model, "mono"); cell(row, String(provider.request_count)); cell(row, String(provider.success_count)); cell(row, `${number(provider.average_latency_ms, 1)} ms`, "mono"); cell(row, String(provider.input_tokens)); cell(row, String(provider.output_tokens)); cell(row, `$${number(provider.estimated_cost_usd, 6)}`, "mono"); body.appendChild(row);
+        });
+      }
+
+      function renderRecent(recent) {
+        const body = document.getElementById("recent-rows");
+        body.replaceChildren();
+        if (!recent.length) { const row = document.createElement("tr"); const item = cell(row, "NO REQUESTS RECORDED", "empty"); item.colSpan = 10; body.appendChild(row); }
+        recent.forEach((item) => {
+          const row = document.createElement("tr");
+          const timestamp = item.timestamp ? new Date(item.timestamp).toISOString().replace("T", " ").replace(".000Z", "Z") : "—";
+          cell(row, timestamp, "mono");
+          const success = item.status === "success";
+          badgeCell(row, String(item.status).toUpperCase(), `status ${success ? "status-success" : "status-error"}`);
+          cell(row, `${item.provider || "—"} / ${item.model || "—"}`, "mono"); cell(row, item.routing_strategy, "mono"); cell(row, `${number(item.latency_ms, 1)} ms`, "mono");
+          badgeCell(row, item.cache_hit ? "HIT" : "MISS", `cache ${item.cache_hit ? "cache-hit" : "cache-miss"}`);
+          cell(row, item.fallback_used ? "YES" : "NO", "mono"); cell(row, `${item.input_tokens} / ${item.output_tokens}`, "mono"); cell(row, `$${number(item.estimated_cost_usd, 6)}`, "mono"); cell(row, item.request_id, "mono"); body.appendChild(row);
+        });
+        renderLatency(recent.slice(0, 12));
+      }
+
+      function renderLatency(recent) {
+        const chart = document.getElementById("latency-chart");
+        chart.replaceChildren();
+        if (!recent.length) { const empty = document.createElement("div"); empty.className = "empty-chart"; empty.textContent = "NO RECENT LATENCY DATA"; chart.appendChild(empty); return; }
+        const maximum = Math.max(...recent.map((item) => Number(item.latency_ms) || 0), 1);
+        recent.slice().reverse().forEach((item, index) => {
+          const value = Math.max(Number(item.latency_ms) || 0, 0);
+          const wrap = document.createElement("div"); wrap.className = "latency-bar-wrap"; wrap.title = `${number(value, 1)} ms / ${item.request_id}`;
+          const label = document.createElement("div"); label.className = "latency-value"; label.textContent = number(value, 0);
+          const bar = document.createElement("div"); bar.className = "latency-bar"; bar.style.height = `${Math.max((value / maximum) * 62, 2)}px`;
+          const sequence = document.createElement("div"); sequence.className = "latency-index"; sequence.textContent = String(index + 1).padStart(2, "0");
+          wrap.append(label, bar, sequence); chart.appendChild(wrap);
+        });
+      }
+
+      async function refreshMetrics() {
+        refreshState.className = "refresh-state loading";
+        refreshState.textContent = "AUTO REFRESH / FETCHING";
+        try {
+          const [summaryResponse, recentResponse] = await Promise.all([fetch(summaryEndpoint), fetch(recentEndpoint)]);
+          if (!summaryResponse.ok || !recentResponse.ok) throw new Error("metrics unavailable");
+          const [summary, recent] = await Promise.all([summaryResponse.json(), recentResponse.json()]);
+          renderSummary(summary); renderRecent(recent);
+          refreshState.className = "refresh-state";
+          refreshState.textContent = "AUTO REFRESH / NOMINAL";
+          setText("last-updated", new Date().toISOString().replace("T", " ").replace(".000Z", "Z"));
+        } catch (_error) {
+          refreshState.className = "refresh-state error";
+          refreshState.textContent = "AUTO REFRESH / DEGRADED — RETAINING LAST DATA";
+        }
+      }
+
+      const initialLatency = Array.from(document.querySelectorAll("#recent-rows tr[data-latency]")).map((row) => ({ latency_ms: Number(row.dataset.latency), request_id: row.dataset.requestId }));
+      renderLatency(initialLatency.slice(0, 12));
+      refreshMetrics();
+      globalThis.setInterval(refreshMetrics, refreshIntervalMs);
+    })();
+  </script>
+</body>
+</html>
