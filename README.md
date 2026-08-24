@@ -112,15 +112,14 @@ PostgreSQL uses the named `postgres_data` volume. The `modelroute` database cred
 
 ## Live deployment
 
-Live demo: deployment URL will be added after provisioning.
+Public links:
 
-The public portfolio deployment is prepared for a Render free Docker Web Service backed by Neon PostgreSQL and Upstash Redis. It deliberately uses MockProvider without OpenAI or Gemini credentials, avoiding commercial API-key exposure and uncontrolled inference charges.
+- Live Demo: `https://modelroute.onrender.com/`
+- API Docs: `https://modelroute.onrender.com/docs`
+- Metrics Dashboard: `https://modelroute.onrender.com/dashboard`
+- Health: `https://modelroute.onrender.com/health`
 
-After provisioning, use the direct application paths rather than the root URL:
-
-- Interactive API documentation: `<deployment-url>/docs`
-- Metrics dashboard: `<deployment-url>/dashboard`
-- Health check: `<deployment-url>/health`
+The public portfolio deployment runs as a Render free Docker Web Service backed by Neon PostgreSQL and Upstash Redis. It deliberately uses MockProvider without OpenAI or Gemini credentials, avoiding commercial API-key exposure and uncontrolled inference charges.
 
 `render.yaml` declares the safe demo configuration. Render prompts for the secret environment variables `DATABASE_URL` and `REDIS_URL`; no provider API-key variable belongs in the public deployment. `DATABASE_URL` accepts Neon `postgres://` or `postgresql://` URLs and adapts their SSL settings for SQLAlchemy/asyncpg. `REDIS_URL` must be Upstash's standard TLS Redis URL using `rediss://`, not its REST URL or token.
 
@@ -171,7 +170,7 @@ python -m pytest
 python -m pip check
 ```
 
-The deployment-preparation run collected 114 tests: **113 passed and 1 PostgreSQL opt-in test skipped** because `MODELROUTE_TEST_DATABASE_URL` was not configured. Ordinary tests make no paid provider calls.
+The final UI-polish run collected 115 tests: **114 passed and 1 PostgreSQL opt-in test skipped** because `MODELROUTE_TEST_DATABASE_URL` was not configured. Ordinary tests make no paid provider calls.
 
 ## Benchmark methodology
 

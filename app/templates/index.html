@@ -1,0 +1,675 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Interactive public demo for the ModelRoute LLM API gateway.">
+  <title>ModelRoute · Interactive gateway demo</title>
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: #172033;
+      background: #f5f7fb;
+      font-synthesis: none;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: #f5f7fb;
+    }
+
+    a { color: inherit; }
+
+    .shell {
+      width: min(1180px, calc(100% - 2rem));
+      margin: 0 auto;
+    }
+
+    .topbar {
+      background: rgba(255, 255, 255, .96);
+      border-bottom: 1px solid #e4e7ec;
+    }
+
+    .topbar-inner {
+      min-height: 68px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: .7rem;
+      text-decoration: none;
+      font-weight: 750;
+      letter-spacing: -.02em;
+    }
+
+    .brand-mark {
+      width: 34px;
+      height: 34px;
+      display: grid;
+      place-items: center;
+      color: white;
+      background: #175cd3;
+      border-radius: 9px;
+      font-size: .82rem;
+      letter-spacing: .02em;
+    }
+
+    nav { display: flex; align-items: center; gap: .35rem; }
+
+    .nav-link {
+      padding: .58rem .72rem;
+      border-radius: .5rem;
+      color: #475467;
+      font-size: .9rem;
+      font-weight: 600;
+      text-decoration: none;
+    }
+
+    .nav-link:hover { background: #f2f4f7; color: #172033; }
+
+    .hero { padding: 3.5rem 0 2rem; }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: .45rem;
+      margin: 0 0 .9rem;
+      padding: .35rem .58rem;
+      border: 1px solid #b2ccff;
+      border-radius: 999px;
+      color: #1849a9;
+      background: #eff4ff;
+      font-size: .75rem;
+      font-weight: 700;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+    }
+
+    .eyebrow::before {
+      content: "";
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #1570ef;
+    }
+
+    h1 {
+      max-width: 800px;
+      margin: 0;
+      color: #101828;
+      font-size: clamp(2.1rem, 5vw, 3.5rem);
+      line-height: 1.05;
+      letter-spacing: -.045em;
+    }
+
+    .hero-copy {
+      max-width: 780px;
+      margin: 1rem 0 0;
+      color: #475467;
+      font-size: 1.04rem;
+      line-height: 1.7;
+    }
+
+    .system-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: .55rem;
+      margin-top: 1.25rem;
+    }
+
+    .system-tag {
+      padding: .38rem .62rem;
+      border: 1px solid #d0d5dd;
+      border-radius: .45rem;
+      color: #344054;
+      background: #fff;
+      font-size: .78rem;
+      font-weight: 650;
+    }
+
+    .workspace {
+      display: grid;
+      grid-template-columns: minmax(0, 1.05fr) minmax(0, .95fr);
+      gap: 1.25rem;
+      align-items: stretch;
+      padding-bottom: 1.5rem;
+    }
+
+    .panel {
+      min-width: 0;
+      padding: 1.35rem;
+      background: #fff;
+      border: 1px solid #e4e7ec;
+      border-radius: .85rem;
+      box-shadow: 0 1px 2px rgba(16, 24, 40, .04), 0 8px 24px rgba(16, 24, 40, .04);
+    }
+
+    .panel-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 1rem;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid #eaecf0;
+    }
+
+    h2 { margin: 0; font-size: 1.08rem; letter-spacing: -.015em; }
+
+    .panel-description {
+      margin: .35rem 0 0;
+      color: #667085;
+      font-size: .87rem;
+      line-height: 1.5;
+    }
+
+    form { margin-top: 1.15rem; }
+
+    label {
+      display: block;
+      margin-bottom: .42rem;
+      color: #344054;
+      font-size: .86rem;
+      font-weight: 650;
+    }
+
+    textarea,
+    select,
+    input {
+      width: 100%;
+      border: 1px solid #d0d5dd;
+      border-radius: .55rem;
+      color: #101828;
+      background: #fff;
+      font: inherit;
+      outline: none;
+      transition: border-color .15s ease, box-shadow .15s ease;
+    }
+
+    textarea {
+      min-height: 142px;
+      padding: .8rem .85rem;
+      resize: vertical;
+      line-height: 1.55;
+    }
+
+    select,
+    input { min-height: 44px; padding: .65rem .72rem; }
+
+    textarea:focus,
+    select:focus,
+    input:focus {
+      border-color: #84adff;
+      box-shadow: 0 0 0 3px #d1e0ff;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1.2fr .8fr .8fr;
+      gap: .8rem;
+      margin-top: .9rem;
+    }
+
+    .field-hint {
+      margin: .38rem 0 0;
+      color: #667085;
+      font-size: .76rem;
+    }
+
+    .cache-guidance {
+      margin: 1rem 0;
+      padding: .78rem .85rem;
+      border-left: 3px solid #2e90fa;
+      color: #344054;
+      background: #f5faff;
+      font-size: .83rem;
+      line-height: 1.5;
+    }
+
+    .button-row { display: flex; align-items: center; gap: .75rem; }
+
+    button {
+      min-height: 44px;
+      padding: .68rem 1rem;
+      border: 1px solid transparent;
+      border-radius: .55rem;
+      font: inherit;
+      font-size: .9rem;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    button:focus-visible,
+    a:focus-visible { outline: 3px solid #84adff; outline-offset: 2px; }
+
+    button:disabled { cursor: not-allowed; opacity: .62; }
+
+    .primary-button { color: #fff; background: #175cd3; border-color: #175cd3; }
+    .primary-button:hover:not(:disabled) { background: #1849a9; }
+    .secondary-button { color: #344054; background: #fff; border-color: #d0d5dd; }
+    .secondary-button:hover:not(:disabled) { background: #f9fafb; }
+
+    .request-status { color: #667085; font-size: .82rem; }
+
+    .response-panel { display: flex; flex-direction: column; }
+
+    .empty-state {
+      flex: 1;
+      min-height: 370px;
+      display: grid;
+      place-items: center;
+      padding: 2rem;
+      text-align: center;
+      color: #667085;
+    }
+
+    .empty-state strong { display: block; margin-bottom: .4rem; color: #344054; }
+
+    .error-box {
+      margin-top: 1rem;
+      padding: .85rem;
+      border: 1px solid #fecdca;
+      border-radius: .55rem;
+      color: #912018;
+      background: #fef3f2;
+      font-size: .86rem;
+      line-height: 1.5;
+    }
+
+    .result { margin-top: 1rem; }
+
+    .result-heading {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: .8rem;
+      margin-bottom: .85rem;
+    }
+
+    .cache-badge {
+      display: inline-flex;
+      align-items: center;
+      min-height: 28px;
+      padding: .28rem .55rem;
+      border-radius: 999px;
+      font-size: .73rem;
+      font-weight: 800;
+      letter-spacing: .04em;
+    }
+
+    .cache-hit { color: #166534; background: #dcfce7; border: 1px solid #86efac; }
+    .cache-miss { color: #92400e; background: #fef3c7; border: 1px solid #fcd34d; }
+
+    .response-content {
+      min-height: 118px;
+      margin: 0;
+      padding: .9rem;
+      border: 1px solid #e4e7ec;
+      border-radius: .6rem;
+      color: #1d2939;
+      background: #f9fafb;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: .86rem;
+      line-height: 1.6;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+    }
+
+    .metadata-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: .65rem;
+      margin-top: .85rem;
+    }
+
+    .metadata-item {
+      min-width: 0;
+      padding: .72rem;
+      border: 1px solid #eaecf0;
+      border-radius: .55rem;
+    }
+
+    .metadata-label {
+      color: #667085;
+      font-size: .71rem;
+      font-weight: 650;
+      text-transform: uppercase;
+      letter-spacing: .035em;
+    }
+
+    .metadata-value {
+      margin-top: .28rem;
+      color: #1d2939;
+      font-size: .88rem;
+      font-weight: 700;
+      overflow-wrap: anywhere;
+    }
+
+    .request-id {
+      margin: .85rem 0;
+      color: #667085;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: .73rem;
+      overflow-wrap: anywhere;
+    }
+
+    .note-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 1rem;
+      padding-bottom: 3rem;
+    }
+
+    .note {
+      padding: 1rem 1.1rem;
+      border: 1px solid #e4e7ec;
+      border-radius: .7rem;
+      color: #475467;
+      background: #fff;
+      font-size: .83rem;
+      line-height: 1.6;
+    }
+
+    .note strong { color: #344054; }
+
+    .hidden { display: none !important; }
+
+    @media (max-width: 850px) {
+      .hero { padding-top: 2.5rem; }
+      .workspace { grid-template-columns: 1fr; }
+      .empty-state { min-height: 220px; }
+    }
+
+    @media (max-width: 620px) {
+      .shell { width: min(100% - 1.1rem, 1180px); }
+      .topbar-inner { align-items: flex-start; flex-direction: column; padding: .75rem 0; }
+      nav { width: 100%; justify-content: space-between; }
+      .nav-link { padding: .5rem .35rem; font-size: .82rem; }
+      .hero { padding: 2rem 0 1.4rem; }
+      .hero-copy { font-size: .95rem; }
+      .workspace { gap: .8rem; }
+      .panel { padding: 1rem; border-radius: .7rem; }
+      .form-grid, .metadata-grid, .note-grid { grid-template-columns: 1fr; }
+      .button-row { align-items: stretch; flex-direction: column; }
+      button { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="shell topbar-inner">
+      <a class="brand" href="/" aria-label="ModelRoute homepage">
+        <span class="brand-mark" aria-hidden="true">MR</span>
+        <span>ModelRoute</span>
+      </a>
+      <nav aria-label="Project navigation">
+        <a class="nav-link" href="/dashboard">Metrics Dashboard</a>
+        <a class="nav-link" href="/docs">API Docs</a>
+        <a class="nav-link" href="/health">Health</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="shell">
+    <section class="hero" aria-labelledby="page-title">
+      <p class="eyebrow">Public demo · MockProvider</p>
+      <h1 id="page-title">Multi-provider LLM gateway and observability platform</h1>
+      <p class="hero-copy">ModelRoute provides provider routing, Redis exact-response caching and rate limiting, bounded retry and fallback, and PostgreSQL observability behind one unified API. The public demo uses MockProvider so no commercial LLM credential is exposed or billed.</p>
+      <div class="system-tags" aria-label="Core system capabilities">
+        <span class="system-tag">FastAPI gateway</span>
+        <span class="system-tag">Redis cache + token bucket</span>
+        <span class="system-tag">PostgreSQL metrics</span>
+      </div>
+    </section>
+
+    <section class="workspace" aria-label="Interactive gateway demo">
+      <article class="panel">
+        <div class="panel-header">
+          <div>
+            <h2>Request</h2>
+            <p class="panel-description">Send a request through the same normalized completion API used by every client.</p>
+          </div>
+        </div>
+
+        <form id="completion-form">
+          <div>
+            <label for="prompt">Prompt</label>
+            <textarea id="prompt" name="prompt" required>Explain binary search in one sentence</textarea>
+          </div>
+
+          <div class="form-grid">
+            <div>
+              <label for="strategy">Strategy</label>
+              <select id="strategy" name="strategy">
+                <option value="fixed" selected>fixed</option>
+                <option value="cheapest">cheapest</option>
+                <option value="fastest">fastest</option>
+              </select>
+              <p class="field-hint">Public demo has one eligible provider.</p>
+            </div>
+            <div>
+              <label for="temperature">Temperature</label>
+              <input id="temperature" name="temperature" type="number" value="0.2" min="0" max="2" step="0.1" required>
+              <p class="field-hint">0.0–2.0</p>
+            </div>
+            <div>
+              <label for="max-tokens">Max tokens</label>
+              <input id="max-tokens" name="max_tokens" type="number" value="64" min="1" max="8192" step="1" required>
+              <p class="field-hint">1–8192</p>
+            </div>
+          </div>
+
+          <p class="cache-guidance" id="cache-guidance"><strong>Try the cache:</strong> submit the exact same request twice to see Redis exact-response caching in action.</p>
+
+          <div id="request-error" class="error-box hidden" role="alert"></div>
+
+          <div class="button-row">
+            <button id="submit-button" class="primary-button" type="submit">Send request</button>
+            <span id="request-status" class="request-status" role="status" aria-live="polite"></span>
+          </div>
+        </form>
+      </article>
+
+      <article class="panel response-panel" aria-labelledby="response-title">
+        <div class="panel-header">
+          <div>
+            <h2 id="response-title">Response</h2>
+            <p class="panel-description">Normalized gateway output and request metadata.</p>
+          </div>
+          <span id="cache-badge" class="cache-badge hidden"></span>
+        </div>
+
+        <div id="empty-state" class="empty-state">
+          <div>
+            <strong>No request sent yet</strong>
+            Submit the form to inspect the provider response, routing result, and cache status.
+          </div>
+        </div>
+
+        <div id="result" class="result hidden" aria-live="polite">
+          <div class="result-heading">
+            <strong>Generated content</strong>
+          </div>
+          <pre id="response-content" class="response-content"></pre>
+
+          <div class="metadata-grid">
+            <div class="metadata-item"><div class="metadata-label">Provider</div><div id="provider" class="metadata-value"></div></div>
+            <div class="metadata-item"><div class="metadata-label">Model</div><div id="model" class="metadata-value"></div></div>
+            <div class="metadata-item"><div class="metadata-label">Latency</div><div id="latency" class="metadata-value"></div></div>
+            <div class="metadata-item"><div class="metadata-label">Fallback</div><div id="fallback" class="metadata-value"></div></div>
+            <div class="metadata-item"><div class="metadata-label">Input tokens</div><div id="input-tokens" class="metadata-value"></div></div>
+            <div class="metadata-item"><div class="metadata-label">Output tokens</div><div id="output-tokens" class="metadata-value"></div></div>
+          </div>
+
+          <p class="request-id">Request ID: <span id="request-id"></span></p>
+          <button id="repeat-button" class="secondary-button" type="button">Send same request again</button>
+        </div>
+      </article>
+    </section>
+
+    <section class="note-grid" aria-label="Demo notes">
+      <div class="note"><strong>Exact caching by design.</strong> Different wording produces a different cache key, even when two prompts have similar meaning.</div>
+      <div class="note"><strong>Demo only.</strong> Do not submit confidential or personal information. PostgreSQL does not persist raw prompts or generated content; successful MockProvider responses can remain temporarily in Redis for the configured cache TTL.</div>
+    </section>
+  </main>
+
+  <script>
+    (() => {
+      "use strict";
+
+      const endpoint = "/v1/chat/completions";
+      const storageKey = "modelroute-demo-client-id";
+      const form = document.getElementById("completion-form");
+      const submitButton = document.getElementById("submit-button");
+      const repeatButton = document.getElementById("repeat-button");
+      const requestStatus = document.getElementById("request-status");
+      const errorBox = document.getElementById("request-error");
+      const emptyState = document.getElementById("empty-state");
+      const result = document.getElementById("result");
+      const cacheBadge = document.getElementById("cache-badge");
+      let lastSuccessfulPayload = null;
+      let inFlight = false;
+
+      function createClientId() {
+        if (globalThis.crypto && typeof globalThis.crypto.randomUUID === "function") {
+          return globalThis.crypto.randomUUID();
+        }
+        return `demo-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+      }
+
+      function getClientId() {
+        try {
+          let clientId = localStorage.getItem(storageKey);
+          if (!clientId) {
+            clientId = createClientId();
+            localStorage.setItem(storageKey, clientId);
+          }
+          return clientId;
+        } catch (_error) {
+          return createClientId();
+        }
+      }
+
+      const clientId = getClientId();
+
+      function currentPayload() {
+        return {
+          prompt: document.getElementById("prompt").value,
+          strategy: document.getElementById("strategy").value,
+          temperature: Number(document.getElementById("temperature").value),
+          max_tokens: Number(document.getElementById("max-tokens").value)
+        };
+      }
+
+      function setLoading(loading) {
+        inFlight = loading;
+        submitButton.disabled = loading;
+        repeatButton.disabled = loading;
+        submitButton.textContent = loading ? "Sending request…" : "Send request";
+        requestStatus.textContent = loading ? "Calling the gateway" : "";
+        form.setAttribute("aria-busy", String(loading));
+      }
+
+      function hideError() {
+        errorBox.textContent = "";
+        errorBox.classList.add("hidden");
+      }
+
+      function showError(message) {
+        errorBox.textContent = message;
+        errorBox.classList.remove("hidden");
+      }
+
+      function errorMessage(status, payload) {
+        if (status === 422) {
+          const details = Array.isArray(payload && payload.detail) ? payload.detail : [];
+          const messages = details
+            .map((item) => item && typeof item.msg === "string" ? item.msg : null)
+            .filter(Boolean);
+          const explanation = messages.length ? messages.join("; ") : "Check the request fields and try again.";
+          return `Validation failed (HTTP 422): ${explanation}`;
+        }
+        if (status === 429) {
+          return "Rate limit reached (HTTP 429). Wait briefly, then try again.";
+        }
+        if (status === 503) {
+          return "A required gateway dependency is temporarily unavailable (HTTP 503). Try again shortly.";
+        }
+        return `The gateway could not complete the request (HTTP ${status}).`;
+      }
+
+      function renderResponse(data) {
+        emptyState.classList.add("hidden");
+        result.classList.remove("hidden");
+        cacheBadge.classList.remove("hidden", "cache-hit", "cache-miss");
+        cacheBadge.classList.add(data.cache_hit ? "cache-hit" : "cache-miss");
+        cacheBadge.textContent = data.cache_hit ? "CACHE HIT" : "CACHE MISS";
+        document.getElementById("response-content").textContent = data.content;
+        document.getElementById("provider").textContent = data.provider;
+        document.getElementById("model").textContent = data.model;
+        document.getElementById("latency").textContent = `${Number(data.latency_ms).toFixed(2)} ms`;
+        document.getElementById("fallback").textContent = data.fallback_used ? "Yes" : "No";
+        document.getElementById("input-tokens").textContent = String(data.input_tokens);
+        document.getElementById("output-tokens").textContent = String(data.output_tokens);
+        document.getElementById("request-id").textContent = data.request_id;
+      }
+
+      async function sendRequest(payload) {
+        if (inFlight) return;
+        hideError();
+        setLoading(true);
+
+        try {
+          const response = await fetch(endpoint, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "X-Client-ID": clientId
+            },
+            body: JSON.stringify(payload)
+          });
+
+          let data = null;
+          try {
+            data = await response.json();
+          } catch (_error) {
+            data = null;
+          }
+
+          if (!response.ok) {
+            showError(errorMessage(response.status, data));
+            return;
+          }
+
+          lastSuccessfulPayload = { ...payload };
+          renderResponse(data);
+        } catch (_error) {
+          showError("The request could not reach the gateway. Check the connection and try again.");
+        } finally {
+          setLoading(false);
+        }
+      }
+
+      form.addEventListener("submit", (event) => {
+        event.preventDefault();
+        if (!form.reportValidity()) return;
+        sendRequest(currentPayload());
+      });
+
+      repeatButton.addEventListener("click", () => {
+        if (lastSuccessfulPayload) {
+          sendRequest({ ...lastSuccessfulPayload });
+        }
+      });
+    })();
+  </script>
+</body>
+</html>

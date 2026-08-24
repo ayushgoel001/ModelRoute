@@ -1,7 +1,10 @@
-from typing import Annotated
+from pathlib import Path
 from time import perf_counter
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi.responses import HTMLResponse
+from fastapi.templating import Jinja2Templates
 
 from app.api.schemas import ChatCompletionRequest, ChatCompletionResponse, HealthResponse
 from app.exceptions import (
@@ -13,6 +16,7 @@ from app.services.completion_service import CompletionService
 from app.services.rate_limiter import TokenBucketRateLimiter
 
 router = APIRouter()
+templates = Jinja2Templates(directory=Path(__file__).parent.parent / "templates")
 
 
 def get_completion_service(request: Request) -> CompletionService:
@@ -29,6 +33,14 @@ def client_identity(request: Request) -> str:
         return f"client:{supplied_id.strip().casefold()}"
     host = request.client.host if request.client else "unknown"
     return f"ip:{host.casefold()}"
+
+
+@router.get("/", response_class=HTMLResponse, include_in_schema=False)
+async def homepage(request: Request) -> HTMLResponse:
+    return templates.TemplateResponse(
+        request=request,
+        name="index.html",
+    )
 
 
 @router.get("/health", response_model=HealthResponse)
