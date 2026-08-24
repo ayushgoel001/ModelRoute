@@ -36,7 +36,7 @@ Repeating the same effective request reuses the Redis response while returning a
 flowchart TD
     Client[Browser / API client] --> API[FastAPI / ModelRoute]
     API --> Limiter[Token-bucket rate limiter]
-    Limiter --> Router[Router: fixed / cheapest / fastest]
+    Limiter --> Router["Router: fixed / cheapest /<br/>fastest"]
     Router --> Cache[Exact-response cache]
     Cache -->|HIT| Metrics[Metrics service]
     Cache -->|MISS| Providers[Provider abstraction]
