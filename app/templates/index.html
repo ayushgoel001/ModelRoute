@@ -3,220 +3,319 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="ModelRoute public gateway console for provider routing, exact caching, rate limiting, fallback, and observability.">
-  <title>ModelRoute / Gateway Console</title>
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='6' fill='%232c3748'/%3E%3Cpath d='M14 45V19h7l11 14 11-14h7v26h-7V29L32 43 21 29v16z' fill='%23f2f0e9'/%3E%3C/svg%3E">
+  <meta name="description" content="ModelRoute is an LLM gateway for provider routing, exact caching, rate limiting, fallback, and request observability.">
+  <title>ModelRoute — LLM Gateway &amp; Observability</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%232f5bea'/%3E%3Cpath d='M15 43V21h7l10 12 10-12h7v22h-7V31L32 43 22 31v12z' fill='white'/%3E%3C/svg%3E">
   <style>
     :root {
       color-scheme: light;
       font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      color: #242a32;
-      background: #e9e8e2;
       font-synthesis: none;
-      --paper: #f5f4ee;
-      --panel: #fbfaf5;
-      --line: #c9c8c0;
-      --line-dark: #9ea2a5;
-      --graphite: #242a32;
-      --muted: #626a73;
-      --blue: #355f82;
-      --blue-soft: #e5edf3;
-      --green: #2f6b4f;
-      --green-soft: #e1eee7;
-      --amber: #8a6428;
-      --amber-soft: #f4ead3;
-      --red: #8a3f3f;
-      --red-soft: #f3e3e0;
+      --page: #f7f9fc; --surface: #fff; --surface-subtle: #f4f7fb; --surface-blue: #eef3ff;
+      --text: #172033; --text-soft: #526078; --text-faint: #77839a;
+      --line: #dfe5ef; --line-strong: #cbd4e2;
+      --blue: #2f5bea; --blue-dark: #2347bd; --blue-soft: #e8eeff;
+      --green: #18794e; --green-soft: #e8f6ef; --amber: #956515; --amber-soft: #fff5da;
+      --red: #b33a3a; --red-soft: #fff0f0;
+      --shadow: 0 18px 50px rgba(27,42,73,.08); --shadow-soft: 0 8px 24px rgba(27,42,73,.06);
       --mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
     }
-
     * { box-sizing: border-box; }
-    body { margin: 0; min-height: 100vh; background: #e9e8e2; }
+    html { scroll-behavior: smooth; }
+    body { margin: 0; min-width: 320px; min-height: 100vh; background: var(--page); color: var(--text); font-size: 16px; line-height: 1.55; }
     button, input, select, textarea { font: inherit; }
+    button, select { cursor: pointer; }
     a { color: inherit; }
-    .system-bar { min-height: 54px; border-bottom: 1px solid #8d9398; background: #2c3748; color: #f4f3ed; }
-    .bar-inner, .console { width: min(1240px, calc(100% - 28px)); margin: 0 auto; }
-    .bar-inner { min-height: 54px; display: flex; align-items: center; justify-content: space-between; gap: 18px; }
-    .wordmark { display: flex; align-items: center; gap: 10px; min-width: 0; }
-    .mark { width: 28px; height: 28px; display: grid; place-items: center; border: 1px solid #8294a5; color: #dce8f0; font-family: var(--mono); font-size: 10px; font-weight: 700; }
-    .wordmark-text { font-family: var(--mono); font-size: 13px; font-weight: 700; letter-spacing: .04em; }
-    .wordmark-text span { color: #aeb9c3; font-weight: 400; }
-    .system-state { display: flex; align-items: center; gap: 8px; font-family: var(--mono); font-size: 10px; letter-spacing: .08em; }
-    .state-led { width: 7px; height: 7px; border-radius: 50%; background: #72a68b; box-shadow: 0 0 0 2px #415647; }
-    .console { padding: 18px 0 28px; }
-    .utility-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; margin-bottom: 15px; }
-    .intro { min-width: 0; }
-    .kicker { margin: 0 0 4px; color: var(--blue); font-family: var(--mono); font-size: 10px; font-weight: 700; letter-spacing: .12em; }
-    h1 { margin: 0; font-size: clamp(21px, 3vw, 29px); line-height: 1.2; letter-spacing: -.025em; }
-    .lede { max-width: 770px; margin: 6px 0 0; color: var(--muted); font-size: 13px; line-height: 1.55; }
-    .utility-nav { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 5px; }
-    .utility-link { min-height: 31px; display: inline-flex; align-items: center; gap: 6px; padding: 6px 9px; border: 1px solid var(--line-dark); background: var(--paper); color: #343b43; font-family: var(--mono); font-size: 10px; font-weight: 700; letter-spacing: .035em; text-decoration: none; }
-    .utility-link:hover { border-color: var(--blue); color: var(--blue); background: #f9faf8; }
-    .utility-link svg { width: 12px; height: 12px; fill: currentColor; }
-    .mode-strip, .panel, .pipeline-panel, .notice { border: 1px solid var(--line); background: var(--panel); box-shadow: 1px 1px 0 rgba(36, 42, 50, .05); }
-    .mode-strip { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 12px; padding: 9px 11px; margin-bottom: 10px; }
-    .strip-label, .section-index, .field-label, .meta-label, .pipeline-stage, .state-display { font-family: var(--mono); text-transform: uppercase; letter-spacing: .07em; }
-    .strip-label { color: var(--muted); font-size: 10px; font-weight: 700; }
-    .mode-buttons { display: flex; gap: 5px; }
-    .mode-button { min-height: 31px; padding: 5px 10px; border: 1px solid var(--line-dark); background: #ecebe5; color: #49515a; font-family: var(--mono); font-size: 10px; font-weight: 700; cursor: pointer; }
-    .mode-button[aria-pressed="true"] { border-color: var(--blue); background: var(--blue); color: #fff; }
-    .mode-button:disabled { cursor: not-allowed; color: #8e9295; border-color: #d2d1ca; background: #e8e7e1; }
-    .mode-note { color: var(--muted); font-family: var(--mono); font-size: 10px; text-align: right; }
-    .workspace { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; align-items: stretch; }
-    .panel { min-width: 0; }
-    .panel-head { min-height: 43px; display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 9px 11px; border-bottom: 1px solid var(--line); background: #efeee8; }
-    .panel-title { display: flex; align-items: baseline; gap: 9px; }
-    .section-index { color: var(--blue); font-size: 9px; font-weight: 800; }
-    h2 { margin: 0; color: #30363d; font-family: var(--mono); font-size: 12px; letter-spacing: .06em; text-transform: uppercase; }
-    .state-display { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: 9px; font-weight: 700; }
-    .state-display::before { content: ""; width: 6px; height: 6px; background: #8c9297; }
-    .state-display.sending::before { background: var(--blue); }
-    .state-display.complete::before { background: var(--green); }
-    .state-display.error::before { background: var(--red); }
-    .panel-body { padding: 11px; }
-    label { display: block; }
-    .field-label { display: block; margin-bottom: 5px; color: #4f5861; font-size: 9px; font-weight: 800; }
-    textarea, select, input { width: 100%; border: 1px solid #aeb1b0; border-radius: 2px; background: #fffef9; color: var(--graphite); outline: none; }
-    textarea { min-height: 118px; padding: 9px; resize: vertical; font-family: var(--mono); font-size: 12px; line-height: 1.5; }
-    select, input { min-height: 35px; padding: 6px 8px; font-size: 12px; }
-    textarea:focus, select:focus, input:focus { border-color: var(--blue); box-shadow: 0 0 0 2px #d8e2ea; }
-    select:disabled { color: #747a80; background: #eae9e3; }
-    .form-grid { display: grid; grid-template-columns: 1.15fr .75fr .75fr; gap: 8px; margin-top: 9px; }
-    .field-help { min-height: 13px; margin: 4px 0 0; color: #7a8086; font-family: var(--mono); font-size: 9px; }
-    .form-footer { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 10px; }
-    .keyboard-hint { color: var(--muted); font-family: var(--mono); font-size: 9px; }
-    button.action { min-height: 34px; padding: 6px 11px; border: 1px solid #234866; border-radius: 2px; background: var(--blue); color: #fff; font-family: var(--mono); font-size: 10px; font-weight: 800; letter-spacing: .04em; cursor: pointer; }
-    button.action:hover:not(:disabled) { background: #284f6e; }
-    button.action.secondary { border-color: #94999c; background: #efeee8; color: #3d444b; }
-    button.action.secondary:hover:not(:disabled) { border-color: var(--blue); color: var(--blue); background: #f8f8f4; }
-    button:disabled { cursor: not-allowed; opacity: .58; }
-    button:focus-visible, a:focus-visible { outline: 2px solid #668cac; outline-offset: 2px; }
-    .error-box { margin-bottom: 9px; padding: 8px 9px; border: 1px solid #c99a94; background: var(--red-soft); color: #743535; font-size: 11px; line-height: 1.45; }
-    .empty-state { min-height: 225px; display: grid; place-items: center; color: #777d82; text-align: center; font-family: var(--mono); font-size: 10px; line-height: 1.65; }
-    .empty-diagram { margin: 0 auto 10px; color: #8e969b; font-size: 18px; letter-spacing: .18em; }
-    .result-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
-    .cache-badge { display: inline-flex; align-items: center; min-height: 26px; padding: 4px 8px; border: 1px solid; font-family: var(--mono); font-size: 10px; font-weight: 800; letter-spacing: .06em; }
-    .cache-hit { border-color: #79a38b; color: var(--green); background: var(--green-soft); }
-    .cache-miss { border-color: #c4a263; color: var(--amber); background: var(--amber-soft); }
-    .response-content { min-height: 112px; max-height: 260px; margin: 0; padding: 9px; overflow: auto; border: 1px solid #aeb1b0; background: #2d333a; color: #edf0e8; font-family: var(--mono); font-size: 11px; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; }
-    .metadata-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); margin-top: 8px; border: 1px solid var(--line); border-right: 0; border-bottom: 0; }
-    .meta-item { min-width: 0; padding: 7px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); background: #f4f3ed; }
-    .meta-label { color: #777e84; font-size: 8px; font-weight: 800; }
-    .meta-value { margin-top: 3px; color: #2f363d; font-family: var(--mono); font-size: 10px; font-weight: 700; overflow-wrap: anywhere; }
-    .request-id-line { margin: 8px 0; color: #656d74; font-family: var(--mono); font-size: 9px; overflow-wrap: anywhere; }
-    .response-actions { display: flex; flex-wrap: wrap; gap: 5px; }
-    .pipeline-panel { margin-top: 10px; }
-    .pipeline-head { display: flex; align-items: center; gap: 9px; padding: 8px 11px; border-bottom: 1px solid var(--line); background: #efeee8; }
-    .pipeline { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); padding: 10px; }
-    .pipeline-stage { position: relative; min-width: 0; padding: 8px 16px 8px 8px; border: 1px solid var(--line); background: #f8f7f1; color: #47515a; font-size: 9px; font-weight: 800; text-align: center; }
-    .pipeline-stage:not(:last-child)::after { content: "→"; position: absolute; z-index: 2; right: -10px; top: 50%; width: 18px; transform: translateY(-50%); color: var(--blue); background: var(--panel); }
-    .pipeline-observation { padding: 0 11px 10px; color: var(--muted); font-family: var(--mono); font-size: 9px; line-height: 1.5; }
-    .notes { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
-    .notice { padding: 9px 11px; color: #596168; font-size: 11px; line-height: 1.55; }
-    .notice strong { color: #343b42; }
     .hidden { display: none !important; }
-    @media (max-width: 900px) {
-      .utility-row { flex-direction: column; gap: 12px; }
-      .utility-nav { justify-content: flex-start; }
+    .container { width: min(1320px, calc(100% - 48px)); margin: 0 auto; }
+
+    .site-header { border-bottom: 1px solid rgba(203,212,226,.8); background: rgba(255,255,255,.96); }
+    .nav-shell { min-height: 74px; display: flex; align-items: center; justify-content: space-between; gap: 32px; }
+    .brand { display: inline-flex; align-items: center; gap: 12px; min-width: 0; text-decoration: none; }
+    .brand-mark { width: 38px; height: 38px; display: grid; place-items: center; flex: 0 0 auto; border-radius: 10px; background: var(--blue); color: #fff; font-weight: 800; letter-spacing: -.04em; }
+    .brand-copy { display: grid; line-height: 1.15; }
+    .brand-name { font-size: 17px; font-weight: 750; letter-spacing: -.02em; }
+    .brand-descriptor { margin-top: 3px; color: var(--text-faint); font-size: 12px; }
+    .site-nav { display: flex; align-items: center; gap: 8px; }
+    .nav-link { min-height: 40px; display: inline-flex; align-items: center; gap: 7px; padding: 8px 12px; border-radius: 9px; color: var(--text-soft); font-size: 14px; font-weight: 650; text-decoration: none; }
+    .nav-link:hover { background: var(--surface-subtle); color: var(--text); }
+    .nav-link.primary { border: 1px solid var(--line-strong); background: var(--surface); color: var(--text); }
+    .nav-link svg { width: 16px; height: 16px; fill: currentColor; }
+    .public-status { display: inline-flex; align-items: center; gap: 7px; margin-left: 4px; padding: 7px 10px; border: 1px solid #bfe5d1; border-radius: 999px; background: var(--green-soft); color: var(--green); font-size: 12px; font-weight: 700; white-space: nowrap; }
+    .status-dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+
+    .hero { padding: 58px 0 42px; }
+    .hero-grid { display: grid; grid-template-columns: minmax(0,1.45fr) minmax(320px,.55fr); gap: 64px; align-items: center; }
+    .eyebrow { margin: 0 0 12px; color: var(--blue); font-size: 13px; font-weight: 750; letter-spacing: .08em; text-transform: uppercase; }
+    h1 { max-width: 860px; margin: 0; font-size: clamp(38px,4.5vw,54px); line-height: 1.08; letter-spacing: -.045em; }
+    .hero-copy { max-width: 820px; margin: 20px 0 0; color: var(--text-soft); font-size: 18px; line-height: 1.65; }
+    .architecture-hint { display: flex; align-items: center; justify-content: center; gap: 12px; min-height: 92px; padding: 20px; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); box-shadow: var(--shadow-soft); }
+    .architecture-node { font-weight: 700; text-align: center; }
+    .architecture-node span { display: block; margin-top: 3px; color: var(--text-faint); font-size: 12px; font-weight: 500; }
+    .architecture-arrow { color: var(--blue); font-size: 20px; }
+
+    .demo-section { padding: 22px 0 72px; }
+    .section-intro { display: flex; align-items: flex-end; justify-content: space-between; gap: 32px; margin-bottom: 24px; }
+    .section-intro h2, .explainer h2 { margin: 0; font-size: clamp(27px,3vw,34px); line-height: 1.2; letter-spacing: -.035em; }
+    .section-intro p { max-width: 690px; margin: 9px 0 0; color: var(--text-soft); font-size: 17px; }
+    .demo-steps { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+    .demo-step { display: inline-flex; align-items: center; gap: 7px; color: var(--text-soft); font-size: 13px; font-weight: 650; white-space: nowrap; }
+    .demo-step-number { width: 25px; height: 25px; display: grid; place-items: center; border: 1px solid var(--line-strong); border-radius: 50%; background: var(--surface); color: var(--blue); font: 700 12px var(--mono); }
+
+    .provider-section { margin-bottom: 20px; }
+    .section-label { display: block; margin-bottom: 10px; color: var(--text); font-size: 15px; font-weight: 700; }
+    .provider-options { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 14px; }
+    .provider-option { position: relative; min-height: 112px; display: grid; grid-template-columns: auto 1fr auto; align-items: start; gap: 13px; padding: 19px 20px; border: 1px solid var(--line-strong); border-radius: 14px; background: var(--surface); color: var(--text); text-align: left; transition: border-color .15s ease, box-shadow .15s ease, background .15s ease; }
+    .provider-option:hover:not(:disabled) { border-color: #9caee8; box-shadow: var(--shadow-soft); }
+    .provider-option[aria-pressed="true"] { border-color: var(--blue); background: var(--surface-blue); box-shadow: 0 0 0 2px rgba(47,91,234,.09); }
+    .provider-option:disabled { cursor: not-allowed; opacity: .64; background: #f3f5f8; }
+    .provider-radio { width: 20px; height: 20px; display: grid; place-items: center; margin-top: 2px; border: 2px solid var(--line-strong); border-radius: 50%; background: #fff; }
+    .provider-option[aria-pressed="true"] .provider-radio { border-color: var(--blue); }
+    .provider-option[aria-pressed="true"] .provider-radio::after { content: ""; width: 9px; height: 9px; border-radius: 50%; background: var(--blue); }
+    .provider-title { display: block; font-size: 16px; font-weight: 750; }
+    .provider-description { display: block; margin-top: 4px; color: var(--text-soft); font-size: 14px; line-height: 1.45; }
+    .provider-tag { padding: 5px 8px; border-radius: 999px; background: var(--green-soft); color: var(--green); font-size: 11px; font-weight: 750; white-space: nowrap; }
+    .provider-tag.limited { background: var(--amber-soft); color: var(--amber); }
+    .mode-note { margin: 10px 2px 0; color: var(--text-faint); font-size: 13px; }
+    .gemini-notice { display: flex; gap: 12px; margin-top: 12px; padding: 14px 16px; border: 1px solid #d9c78d; border-radius: 12px; background: #fffaf0; color: #6f5420; font-size: 14px; }
+    .notice-icon { width: 22px; height: 22px; display: grid; place-items: center; flex: 0 0 auto; border-radius: 50%; background: var(--amber-soft); font-weight: 800; }
+
+    .workspace { display: grid; grid-template-columns: minmax(0,.95fr) minmax(0,1.05fr); gap: 20px; align-items: stretch; }
+    .card { min-width: 0; border: 1px solid var(--line); border-radius: 18px; background: var(--surface); box-shadow: var(--shadow); }
+    .card-header { min-height: 76px; display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 20px 24px; border-bottom: 1px solid var(--line); }
+    .card-heading { display: flex; align-items: center; gap: 13px; }
+    .card-number { width: 34px; height: 34px; display: grid; place-items: center; flex: 0 0 auto; border-radius: 10px; background: var(--blue-soft); color: var(--blue); font: 750 13px var(--mono); }
+    .card-header h3 { margin: 0; font-size: 20px; line-height: 1.25; letter-spacing: -.02em; }
+    .card-subtitle { margin-top: 3px; color: var(--text-faint); font-size: 13px; }
+    .request-state { display: inline-flex; align-items: center; gap: 7px; color: var(--text-faint); font-size: 12px; font-weight: 750; text-transform: uppercase; }
+    .request-state::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+    .request-state.sending { color: var(--blue); }
+    .request-state.complete { color: var(--green); }
+    .request-state.error { color: var(--red); }
+    .card-body { padding: 24px; }
+    label { display: block; }
+    .field-label { display: block; margin-bottom: 8px; color: var(--text); font-size: 14px; font-weight: 700; }
+    textarea, select, input { width: 100%; border: 1px solid var(--line-strong); border-radius: 10px; background: #fff; color: var(--text); outline: none; }
+    textarea { min-height: 196px; padding: 14px 15px; resize: vertical; font-size: 16px; line-height: 1.6; }
+    select, input { min-height: 48px; padding: 10px 12px; }
+    textarea:focus, select:focus, input:focus { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(47,91,234,.13); }
+    select:disabled { cursor: not-allowed; color: var(--text-faint); background: #f0f3f7; }
+    .settings-label { margin: 20px 0 11px; color: var(--text-soft); font-size: 13px; font-weight: 700; }
+    .form-grid { display: grid; grid-template-columns: 1.15fr .75fr .75fr; gap: 12px; }
+    .field-help { min-height: 20px; margin: 6px 0 0; color: var(--text-faint); font-size: 12px; line-height: 1.4; }
+    .form-footer { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin-top: 22px; }
+    .keyboard-hint { color: var(--text-faint); font-size: 12px; }
+    kbd { padding: 2px 6px; border: 1px solid var(--line-strong); border-bottom-width: 2px; border-radius: 5px; background: var(--surface-subtle); font: 600 11px var(--mono); }
+    .button { min-height: 46px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 10px 16px; border: 1px solid transparent; border-radius: 10px; font-size: 14px; font-weight: 750; cursor: pointer; transition: background .15s ease, border-color .15s ease, transform .15s ease; }
+    .button:hover:not(:disabled) { transform: translateY(-1px); }
+    .button.primary { min-width: 150px; background: var(--blue); color: #fff; box-shadow: 0 8px 18px rgba(47,91,234,.2); }
+    .button.primary:hover:not(:disabled) { background: var(--blue-dark); }
+    .button.secondary { border-color: var(--line-strong); background: var(--surface); color: var(--text-soft); }
+    .button.secondary:hover:not(:disabled) { border-color: #aab7cd; background: var(--surface-subtle); color: var(--text); }
+    .button:disabled, button:disabled { cursor: not-allowed; opacity: .58; transform: none; }
+    button:focus-visible, a:focus-visible, summary:focus-visible { outline: 3px solid rgba(47,91,234,.35); outline-offset: 3px; }
+
+    .response-card { display: flex; flex-direction: column; }
+    .response-card .card-body { min-height: 450px; display: flex; flex: 1; flex-direction: column; }
+    .response-empty { min-height: 350px; display: grid; place-items: center; flex: 1; padding: 32px; text-align: center; }
+    .empty-visual { width: 54px; height: 54px; display: grid; place-items: center; margin: 0 auto 16px; border-radius: 15px; background: var(--blue-soft); color: var(--blue); font-size: 24px; }
+    .response-empty h4, .error-box h4 { margin: 0; font-size: 18px; }
+    .response-empty p { max-width: 390px; margin: 8px auto 0; color: var(--text-soft); font-size: 14px; }
+    .response-empty.loading-state .empty-visual { position: relative; color: transparent; }
+    .response-empty.loading-state .empty-visual::after { content: ""; width: 20px; height: 20px; border: 3px solid #aebdf4; border-top-color: var(--blue); border-radius: 50%; animation: spin .8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .error-box { min-height: 250px; display: grid; place-items: center; flex: 1; padding: 28px; border: 1px solid #efc5c5; border-radius: 13px; background: var(--red-soft); color: #852c2c; text-align: center; }
+    .error-icon { width: 46px; height: 46px; display: grid; place-items: center; margin: 0 auto 14px; border-radius: 50%; background: #f8dada; font-size: 21px; font-weight: 700; }
+    .error-box p { max-width: 430px; margin: 8px auto 0; color: #934545; }
+    .error-box .error-help { margin-top: 14px; color: var(--text-soft); font-size: 13px; }
+    .cache-badge { display: inline-flex; align-items: center; gap: 7px; min-height: 30px; padding: 5px 10px; border: 1px solid; border-radius: 999px; font: 750 12px var(--mono); }
+    .cache-badge::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+    .cache-hit { border-color: #a9d8c1; background: var(--green-soft); color: var(--green); }
+    .cache-miss { border-color: #ead59d; background: var(--amber-soft); color: var(--amber); }
+    .response-label { margin-bottom: 10px; color: var(--text-soft); font-size: 13px; font-weight: 700; }
+    .response-content { min-height: 160px; max-height: 360px; margin: 0; padding: 18px; overflow: auto; border: 1px solid #26334b; border-radius: 12px; background: #172033; color: #f4f7fb; font: 14px/1.65 var(--mono); white-space: pre-wrap; overflow-wrap: anywhere; }
+    .primary-metadata { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 10px; margin-top: 14px; }
+    .metric-chip { min-width: 0; padding: 11px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface-subtle); }
+    .metric-label { color: var(--text-faint); font-size: 11px; font-weight: 700; text-transform: uppercase; }
+    .metric-value { margin-top: 4px; font: 700 13px var(--mono); overflow-wrap: anywhere; }
+    .cache-guidance { display: flex; align-items: center; justify-content: space-between; gap: 20px; margin-top: 16px; padding: 15px 16px; border: 1px solid #cfd9f5; border-radius: 12px; background: var(--surface-blue); }
+    .cache-guidance strong { display: block; font-size: 14px; }
+    .cache-guidance p { margin: 3px 0 0; color: var(--text-soft); font-size: 13px; }
+    .technical-details { margin-top: 14px; border: 1px solid var(--line); border-radius: 11px; background: var(--surface); }
+    .technical-details summary { padding: 12px 14px; color: var(--text-soft); font-size: 13px; font-weight: 700; cursor: pointer; }
+    .details-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; padding: 0 14px 14px; }
+    .detail-item { min-width: 0; }
+    .detail-label { color: var(--text-faint); font-size: 11px; font-weight: 700; text-transform: uppercase; }
+    .detail-value { margin-top: 4px; font: 13px var(--mono); overflow-wrap: anywhere; }
+    .request-id-item { grid-column: 1 / -1; }
+    .response-actions { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 16px; }
+
+    .pipeline-card { margin-top: 20px; }
+    .pipeline-card .card-body { padding-top: 22px; }
+    .pipeline { display: grid; grid-template-columns: repeat(5,minmax(0,1fr)); gap: 28px; margin: 0; padding: 0; list-style: none; }
+    .pipeline-stage { position: relative; min-width: 0; }
+    .pipeline-stage:not(:last-child)::after { content: ""; position: absolute; top: 24px; left: calc(100% + 7px); width: 14px; height: 1px; background: var(--line-strong); }
+    .stage-top { display: flex; align-items: center; gap: 10px; }
+    .stage-icon { width: 46px; height: 46px; display: grid; place-items: center; flex: 0 0 auto; border: 1px solid var(--line); border-radius: 13px; background: var(--surface-subtle); color: var(--blue); font: 750 13px var(--mono); }
+    .stage-label { font-size: 14px; font-weight: 750; }
+    .stage-description { min-height: 40px; margin: 9px 0 0; color: var(--text-faint); font-size: 12px; line-height: 1.45; }
+    .stage-status { display: inline-flex; max-width: 100%; margin-top: 9px; padding: 4px 7px; border-radius: 6px; background: var(--surface-subtle); color: var(--text-soft); font: 650 11px var(--mono); overflow-wrap: anywhere; }
+    .pipeline-observation { margin-top: 20px; padding: 13px 15px; border-radius: 10px; background: var(--surface-subtle); color: var(--text-soft); font: 12px/1.5 var(--mono); overflow-wrap: anywhere; }
+
+    .explainer { padding: 72px 0; border-top: 1px solid var(--line); background: var(--surface); }
+    .explainer-lede { max-width: 720px; margin: 11px 0 0; color: var(--text-soft); font-size: 17px; }
+    .capability-grid { display: grid; grid-template-columns: repeat(5,minmax(0,1fr)); gap: 14px; margin-top: 30px; }
+    .capability { padding: 20px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); }
+    .capability-number { color: var(--blue); font: 750 12px var(--mono); }
+    .capability h3 { margin: 13px 0 6px; font-size: 16px; }
+    .capability p { margin: 0; color: var(--text-soft); font-size: 13px; }
+    .system-map { display: grid; grid-template-columns: auto 34px minmax(240px,1fr) 34px auto; align-items: center; gap: 12px; max-width: 960px; margin: 34px auto 0; padding: 22px; border: 1px solid var(--line); border-radius: 16px; background: var(--surface-subtle); }
+    .map-node { padding: 13px 16px; border: 1px solid var(--line-strong); border-radius: 10px; background: var(--surface); font-size: 14px; font-weight: 700; text-align: center; }
+    .map-core { padding: 18px; border-color: #aabaf0; background: var(--surface-blue); }
+    .map-core small { display: block; margin-top: 5px; color: var(--text-soft); font-weight: 500; }
+    .map-arrow { color: var(--blue); font-size: 22px; text-align: center; }
+    .privacy-note { display: flex; gap: 13px; max-width: 960px; margin: 18px auto 0; padding: 15px 17px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--text-soft); font-size: 13px; }
+    .privacy-note strong { color: var(--text); }
+    .footer { padding: 26px 0; border-top: 1px solid var(--line); background: var(--surface); color: var(--text-faint); font-size: 13px; }
+    .footer-inner { display: flex; justify-content: space-between; gap: 20px; }
+    .footer a { color: var(--blue); font-weight: 650; text-decoration: none; }
+
+    @media (max-width: 1080px) {
+      .hero-grid { grid-template-columns: 1fr; gap: 28px; }
+      .architecture-hint { max-width: 560px; }
+      .section-intro { align-items: flex-start; flex-direction: column; gap: 16px; }
+      .demo-steps { justify-content: flex-start; }
       .workspace { grid-template-columns: 1fr; }
-      .mode-strip { grid-template-columns: 1fr; }
-      .mode-note { text-align: left; }
+      .capability-grid { grid-template-columns: repeat(3,minmax(0,1fr)); }
+    }
+    @media (max-width: 820px) {
+      .container { width: min(100% - 32px,1320px); }
+      .nav-shell { align-items: flex-start; flex-direction: column; gap: 13px; padding: 15px 0; }
+      .site-nav { width: 100%; overflow-x: auto; padding-bottom: 2px; }
+      .public-status { margin-left: auto; }
+      .hero { padding-top: 42px; }
+      .provider-options { grid-template-columns: 1fr; }
+      .pipeline { grid-template-columns: 1fr; gap: 12px; }
+      .pipeline-stage { display: grid; grid-template-columns: 48px 1fr auto; column-gap: 12px; align-items: center; }
+      .pipeline-stage:not(:last-child)::after { top: calc(100% + 1px); left: 23px; width: 1px; height: 10px; }
+      .stage-top { display: contents; }
+      .stage-description { min-height: 0; grid-column: 2; margin: 2px 0 0; }
+      .stage-status { grid-column: 3; grid-row: 1 / 3; margin: 0; }
+      .capability-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
+      .system-map { grid-template-columns: 1fr; }
+      .map-arrow { transform: rotate(90deg); }
     }
     @media (max-width: 620px) {
-      .bar-inner, .console { width: min(100% - 16px, 1240px); }
-      .bar-inner { align-items: flex-start; flex-direction: column; gap: 5px; padding: 9px 0; }
-      .system-state { padding-left: 38px; }
-      .utility-nav { display: grid; grid-template-columns: 1fr 1fr; width: 100%; }
-      .utility-link { justify-content: center; }
-      .mode-buttons { display: grid; grid-template-columns: 1fr 1fr; }
-      .form-grid, .metadata-grid, .notes { grid-template-columns: 1fr; }
+      .container { width: min(100% - 24px,1320px); }
+      .brand-descriptor { display: none; }
+      .site-nav { display: grid; grid-template-columns: repeat(4,minmax(max-content,1fr)); }
+      .nav-link { justify-content: center; padding-inline: 8px; }
+      .nav-link svg { display: none; }
+      .public-status { grid-column: 1 / -1; justify-self: start; margin: 2px 0 0; }
+      .hero { padding: 36px 0 30px; }
+      h1 { font-size: 36px; }
+      .hero-copy { font-size: 16px; }
+      .architecture-hint { flex-wrap: wrap; justify-content: flex-start; min-height: 0; }
+      .demo-step { width: calc(50% - 4px); white-space: normal; }
+      .provider-option { grid-template-columns: auto 1fr; }
+      .provider-tag { grid-column: 2; justify-self: start; }
+      .card-header, .card-body { padding: 18px; }
+      .card-subtitle { display: none; }
+      .form-grid, .primary-metadata, .details-grid { grid-template-columns: 1fr; }
+      .request-id-item { grid-column: auto; }
       .form-footer { align-items: stretch; flex-direction: column; }
-      button.action { width: 100%; }
+      .button.primary { width: 100%; }
+      .cache-guidance { align-items: stretch; flex-direction: column; }
       .response-actions { display: grid; grid-template-columns: 1fr; }
-      .pipeline { grid-template-columns: 1fr; gap: 4px; }
-      .pipeline-stage { padding: 7px; text-align: left; }
-      .pipeline-stage:not(:last-child)::after { content: "↓"; right: 8px; top: auto; bottom: -10px; transform: none; background: transparent; }
+      .response-actions .button { width: 100%; }
+      .pipeline-stage { grid-template-columns: 48px minmax(0,1fr); }
+      .stage-status { grid-column: 2; grid-row: auto; justify-self: start; margin-top: 6px; }
+      .capability-grid { grid-template-columns: 1fr; }
+      .footer-inner { flex-direction: column; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
     }
   </style>
 </head>
 <body>
-  <header class="system-bar">
-    <div class="bar-inner">
-      <div class="wordmark"><div class="mark" aria-hidden="true">MR</div><div class="wordmark-text">MODELROUTE <span>/ GATEWAY CONSOLE</span></div></div>
-      <div class="system-state"><span class="state-led" aria-hidden="true"></span>PUBLIC DEMO / ONLINE</div>
+  <header class="site-header">
+    <div class="container nav-shell">
+      <a class="brand" href="/" aria-label="ModelRoute homepage"><span class="brand-mark" aria-hidden="true">MR</span><span class="brand-copy"><span class="brand-name">ModelRoute</span><span class="brand-descriptor">LLM Gateway &amp; Observability</span></span></a>
+      <nav class="site-nav" aria-label="Project navigation">
+        <a class="nav-link" href="https://github.com/ayushgoel001/ModelRoute" target="_blank" rel="noopener noreferrer"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 .8a11.5 11.5 0 0 0-3.64 22.41c.58.1.79-.25.79-.56v-2.23c-3.22.7-3.9-1.37-3.9-1.37-.53-1.34-1.29-1.7-1.29-1.7-1.05-.72.08-.7.08-.7 1.16.08 1.78 1.2 1.78 1.2 1.04 1.77 2.72 1.26 3.38.96.1-.75.4-1.26.74-1.55-2.57-.29-5.27-1.28-5.27-5.69 0-1.26.45-2.28 1.19-3.09-.12-.29-.52-1.47.11-3.05 0 0 .97-.31 3.16 1.18a10.97 10.97 0 0 1 5.76 0c2.2-1.49 3.16-1.18 3.16-1.18.63 1.58.23 2.76.11 3.05.74.81 1.19 1.83 1.19 3.09 0 4.42-2.71 5.39-5.29 5.68.42.36.79 1.06.79 2.14v3.18c0 .31.21.67.8.56A11.5 11.5 0 0 0 12 .8z"/></svg>GitHub</a>
+        <a class="nav-link" href="/dashboard">Metrics</a><a class="nav-link" href="/docs">API Docs</a><a class="nav-link primary" href="/health">Health</a>
+        <span class="public-status"><span class="status-dot" aria-hidden="true"></span>Public demo</span>
+      </nav>
     </div>
   </header>
 
-  <main class="console">
-    <section class="utility-row" aria-labelledby="page-title">
-      <div class="intro">
-        <p class="kicker">UNIFIED LLM REQUEST CONTROL PLANE</p>
-        <h1 id="page-title">Route, cache, protect, and observe model traffic.</h1>
-        <p class="lede">A compact FastAPI gateway demonstrating provider abstraction, exact Redis caching, atomic rate limiting, bounded retry/fallback, and PostgreSQL request observability.</p>
-      </div>
-      <nav class="utility-nav" aria-label="Project navigation">
-        <a class="utility-link" href="https://github.com/ayushgoel001/ModelRoute" target="_blank" rel="noopener noreferrer"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 .8a11.5 11.5 0 0 0-3.64 22.41c.58.1.79-.25.79-.56v-2.23c-3.22.7-3.9-1.37-3.9-1.37-.53-1.34-1.29-1.7-1.29-1.7-1.05-.72.08-.7.08-.7 1.16.08 1.78 1.2 1.78 1.2 1.04 1.77 2.72 1.26 3.38.96.1-.75.4-1.26.74-1.55-2.57-.29-5.27-1.28-5.27-5.69 0-1.26.45-2.28 1.19-3.09-.12-.29-.52-1.47.11-3.05 0 0 .97-.31 3.16 1.18a10.97 10.97 0 0 1 5.76 0c2.2-1.49 3.16-1.18 3.16-1.18.63 1.58.23 2.76.11 3.05.74.81 1.19 1.83 1.19 3.09 0 4.42-2.71 5.39-5.29 5.68.42.36.79 1.06.79 2.14v3.18c0 .31.21.67.8.56A11.5 11.5 0 0 0 12 .8z"/></svg>GITHUB</a>
-        <a class="utility-link" href="/dashboard">METRICS</a>
-        <a class="utility-link" href="/docs">API DOCS</a>
-        <a class="utility-link" href="/health">HEALTH</a>
-      </nav>
-    </section>
+  <main>
+    <section class="hero"><div class="container hero-grid"><div><p class="eyebrow">LLM gateway infrastructure</p><h1>One API for routing, protecting, and observing LLM traffic.</h1><p class="hero-copy">ModelRoute sits between your application and model providers, applying routing, exact-response caching, rate limits, bounded retry and fallback, and privacy-safe request observability.</p></div><div class="architecture-hint" aria-label="Application to ModelRoute to provider"><div class="architecture-node">Application<span>one request</span></div><span class="architecture-arrow" aria-hidden="true">→</span><div class="architecture-node">ModelRoute<span>gateway controls</span></div><span class="architecture-arrow" aria-hidden="true">→</span><div class="architecture-node">Provider<span>model response</span></div></div></div></section>
 
-    <section class="mode-strip" aria-labelledby="provider-mode-label">
-      <div id="provider-mode-label" class="strip-label">PROVIDER MODE</div>
-      <div class="mode-buttons" role="group" aria-label="Public demo provider">
-        <button id="mock-mode" class="mode-button" type="button" aria-pressed="true">MOCK DEMO</button>
-        <button id="gemini-mode" class="mode-button" type="button" aria-pressed="false" {% if not gemini_demo_available %}disabled aria-disabled="true"{% endif %}>GEMINI LIVE · LIMITED</button>
-      </div>
-      <div id="mode-note" class="mode-note">SAFE LOCAL SIMULATION / NO PROVIDER BILLING</div>
-    </section>
+    <section id="demo" class="demo-section"><div class="container">
+      <div class="section-intro"><div><p class="eyebrow">Interactive demo</p><h2>Try the gateway</h2><p>Send a request through MockProvider or the limited live Gemini path. ModelRoute will show what happened across the gateway.</p></div><div class="demo-steps" aria-label="Demo steps"><span class="demo-step"><span class="demo-step-number">1</span>Choose provider</span><span class="demo-step"><span class="demo-step-number">2</span>Send request</span><span class="demo-step"><span class="demo-step-number">3</span>Inspect result</span><span class="demo-step"><span class="demo-step-number">4</span>Repeat for cache</span></div></div>
 
-    <section class="workspace" aria-label="Interactive gateway workspace">
-      <article class="panel">
-        <div class="panel-head"><div class="panel-title"><span class="section-index">01 /</span><h2>Request</h2></div><div id="request-state" class="state-display">IDLE</div></div>
-        <div class="panel-body">
-          <form id="completion-form">
-            <label for="prompt"><span class="field-label">PROMPT / UTF-8 TEXT</span></label>
-            <textarea id="prompt" name="prompt" required>Explain binary search in one sentence</textarea>
-            <div class="form-grid">
-              <div><label for="strategy"><span class="field-label">ROUTING STRATEGY</span></label><select id="strategy" name="strategy"><option value="fixed" selected>fixed</option><option value="cheapest">cheapest</option><option value="fastest">fastest</option></select><p id="strategy-help" class="field-help">MOCK IS THE PINNED PUBLIC PROVIDER</p></div>
-              <div><label for="temperature"><span class="field-label">TEMPERATURE</span></label><input id="temperature" name="temperature" type="number" value="0.2" min="0" max="2" step="0.1" required><p class="field-help">RANGE 0.0–2.0</p></div>
-              <div><label for="max-tokens"><span class="field-label">MAX TOKENS</span></label><input id="max-tokens" name="max_tokens" type="number" value="64" min="1" max="8192" step="1" required><p id="token-help" class="field-help">PUBLIC RANGE 1–8192</p></div>
-            </div>
-            <div id="request-error" class="error-box hidden" role="alert"></div>
-            <div class="form-footer"><span class="keyboard-hint">CTRL+ENTER / ⌘+ENTER TO SEND</span><button id="submit-button" class="action" type="submit">EXECUTE REQUEST</button></div>
-          </form>
+      <section class="provider-section" aria-labelledby="provider-mode-label">
+        <span id="provider-mode-label" class="section-label">1. Choose a provider mode</span>
+        <div class="provider-options" role="group" aria-label="Public demo provider">
+          <button id="mock-mode" class="provider-option" type="button" aria-pressed="true"><span class="provider-radio" aria-hidden="true"></span><span><span class="provider-title">Mock Demo</span><span class="provider-description">Deterministic and safe. The recommended place to explore routing and exact caching.</span></span><span class="provider-tag">Recommended first</span></button>
+          <button id="gemini-mode" class="provider-option" type="button" aria-pressed="false" {% if not gemini_demo_available %}disabled aria-disabled="true"{% endif %}><span class="provider-radio" aria-hidden="true"></span><span><span class="provider-title">Gemini Live · Limited</span><span class="provider-description">A real Gemini API request with strict public quota and provider-dependent availability.</span></span><span class="provider-tag limited">{% if gemini_demo_available %}Opt in{% else %}Unavailable{% endif %}</span></button>
         </div>
-      </article>
+        <p id="mode-note" class="mode-note">MockProvider is selected. It is deterministic and does not call a commercial model API.</p>
+        <div id="gemini-notice" class="gemini-notice hidden" role="note"><span class="notice-icon" aria-hidden="true">!</span><span><strong>Live provider request.</strong> This sends your prompt to Google’s Gemini API. Availability is limited; do not submit confidential, personal, or sensitive information.</span></div>
+      </section>
 
-      <article class="panel" aria-labelledby="response-title">
-        <div class="panel-head"><div class="panel-title"><span class="section-index">02 /</span><h2 id="response-title">Gateway Output</h2></div><span id="cache-badge" class="cache-badge hidden"></span></div>
-        <div class="panel-body">
-          <div id="empty-state" class="empty-state"><div><div class="empty-diagram" aria-hidden="true">□ → □ → □</div>AWAITING REQUEST<br>NO COMPLETION HAS BEEN EXECUTED</div></div>
-          <div id="result" class="hidden" aria-live="polite">
-            <div class="result-top"><span class="field-label">NORMALIZED RESPONSE CONTENT</span></div>
-            <pre id="response-content" class="response-content"></pre>
-            <div class="metadata-grid">
-              <div class="meta-item"><div class="meta-label">PROVIDER</div><div id="provider" class="meta-value"></div></div><div class="meta-item"><div class="meta-label">MODEL</div><div id="model" class="meta-value"></div></div><div class="meta-item"><div class="meta-label">LATENCY</div><div id="latency" class="meta-value"></div></div><div class="meta-item"><div class="meta-label">FALLBACK</div><div id="fallback" class="meta-value"></div></div><div class="meta-item"><div class="meta-label">INPUT TOKENS</div><div id="input-tokens" class="meta-value"></div></div><div class="meta-item"><div class="meta-label">OUTPUT TOKENS</div><div id="output-tokens" class="meta-value"></div></div>
+      <section class="workspace" aria-label="Interactive gateway workspace">
+        <article class="card request-card">
+          <div class="card-header"><div class="card-heading"><span class="card-number">02</span><div><h3>Build your request</h3><div class="card-subtitle">The same normalized request contract used by the API</div></div></div><div id="request-state" class="request-state" role="status">Idle</div></div>
+          <div class="card-body"><form id="completion-form">
+            <label for="prompt"><span class="field-label">Prompt</span></label><textarea id="prompt" name="prompt" required aria-describedby="prompt-help">Explain binary search in one sentence</textarea><p id="prompt-help" class="field-help">Describe the response you want the selected provider to generate.</p>
+            <div class="settings-label">Request settings</div><div class="form-grid">
+              <div><label for="strategy"><span class="field-label">Routing strategy</span></label><select id="strategy" name="strategy"><option value="fixed" selected>Fixed</option><option value="cheapest">Cheapest</option><option value="fastest">Fastest</option></select><p id="strategy-help" class="field-help">MockProvider is the pinned public provider.</p></div>
+              <div><label for="temperature"><span class="field-label">Temperature</span></label><input id="temperature" name="temperature" type="number" value="0.2" min="0" max="2" step="0.1" required><p class="field-help">Range 0.0–2.0</p></div>
+              <div><label for="max-tokens"><span class="field-label">Max tokens</span></label><input id="max-tokens" name="max_tokens" type="number" value="64" min="1" max="8192" step="1" required><p id="token-help" class="field-help">Public range 1–8192</p></div>
             </div>
-            <p class="request-id-line">REQUEST ID / <span id="request-id"></span></p>
-            <div class="response-actions"><button id="copy-response" class="action secondary" type="button">COPY RESPONSE</button><button id="copy-request-id" class="action secondary" type="button">COPY REQUEST ID</button><button id="repeat-button" class="action secondary" type="button">REPEAT EXACT REQUEST</button></div>
+            <div class="form-footer"><span class="keyboard-hint"><kbd>Ctrl</kbd>/<kbd>⌘</kbd> + <kbd>Enter</kbd> to send</span><button id="submit-button" class="button primary" type="submit">Send request</button></div>
+          </form></div>
+        </article>
+
+        <article class="card response-card" aria-labelledby="response-title">
+          <div class="card-header"><div class="card-heading"><span class="card-number">03</span><div><h3 id="response-title">Inspect the result</h3><div class="card-subtitle">Response, routing outcome, cache state, and usage</div></div></div><span id="cache-badge" class="cache-badge hidden"></span></div>
+          <div id="response-region" class="card-body" aria-live="polite" aria-busy="false">
+            <div id="empty-state" class="response-empty"><div><div class="empty-visual" aria-hidden="true">→</div><h4 id="empty-title">Your response will appear here</h4><p id="empty-copy">Choose a provider, adjust the request if you like, then select Send request.</p></div></div>
+            <div id="request-error" class="error-box hidden" role="alert"><div><div class="error-icon" aria-hidden="true">!</div><h4>Request failed</h4><p id="error-detail"></p><p class="error-help">MockProvider remains available for exploring the gateway.</p></div></div>
+            <div id="result" class="hidden">
+              <div class="response-label">Response content</div><pre id="response-content" class="response-content"></pre>
+              <div class="primary-metadata" aria-label="Primary response metadata"><div class="metric-chip"><div class="metric-label">Provider</div><div id="provider" class="metric-value"></div></div><div class="metric-chip"><div class="metric-label">Model</div><div id="model" class="metric-value"></div></div><div class="metric-chip"><div class="metric-label">Latency</div><div id="latency" class="metric-value"></div></div><div class="metric-chip"><div class="metric-label">Fallback</div><div id="fallback" class="metric-value"></div></div></div>
+              <div id="cache-guidance" class="cache-guidance"><div><strong id="cache-guidance-title"></strong><p id="cache-guidance-text"></p></div><button id="repeat-button" class="button secondary" type="button">Repeat exact request</button></div>
+              <details class="technical-details"><summary>Technical details</summary><div class="details-grid"><div class="detail-item"><div class="detail-label">Input tokens</div><div id="input-tokens" class="detail-value"></div></div><div class="detail-item"><div class="detail-label">Output tokens</div><div id="output-tokens" class="detail-value"></div></div><div class="detail-item request-id-item"><div class="detail-label">Request ID</div><div id="request-id" class="detail-value"></div></div></div></details>
+              <div class="response-actions"><button id="copy-response" class="button secondary" type="button">Copy response</button><button id="copy-request-id" class="button secondary" type="button">Copy request ID</button></div>
+            </div>
           </div>
-        </div>
-      </article>
-    </section>
+        </article>
+      </section>
 
-    <section class="pipeline-panel" aria-labelledby="pipeline-title">
-      <div class="pipeline-head"><span class="section-index">03 /</span><h2 id="pipeline-title">Request Pipeline</h2></div>
-      <div class="pipeline" aria-label="Gateway architecture"><div class="pipeline-stage">RATE LIMIT</div><div class="pipeline-stage">ROUTER</div><div class="pipeline-stage">EXACT CACHE</div><div class="pipeline-stage">PROVIDER</div><div class="pipeline-stage">METRICS</div></div>
-      <div id="pipeline-observation" class="pipeline-observation">OBSERVED / IDLE — RUN A REQUEST TO VIEW RETURNED ROUTE, CACHE, PROVIDER, AND FALLBACK STATE.</div>
-    </section>
+      <section class="card pipeline-card" aria-labelledby="pipeline-title">
+        <div class="card-header"><div class="card-heading"><span class="card-number">04</span><div><h3 id="pipeline-title">Request pipeline</h3><div class="card-subtitle">How ModelRoute handles a completion request</div></div></div></div>
+        <div class="card-body"><ol class="pipeline" aria-label="Gateway request pipeline">
+          <li class="pipeline-stage"><div class="stage-top"><span class="stage-icon">01</span><span class="stage-label">Rate limit</span></div><p class="stage-description">Protect request volume</p><span id="pipeline-rate-status" class="stage-status">Waiting</span></li>
+          <li class="pipeline-stage"><div class="stage-top"><span class="stage-icon">02</span><span class="stage-label">Router</span></div><p class="stage-description">Choose the provider path</p><span id="pipeline-router-status" class="stage-status">Waiting</span></li>
+          <li class="pipeline-stage"><div class="stage-top"><span class="stage-icon">03</span><span class="stage-label">Exact cache</span></div><p class="stage-description">Reuse identical responses</p><span id="pipeline-cache-status" class="stage-status">Waiting</span></li>
+          <li class="pipeline-stage"><div class="stage-top"><span class="stage-icon">04</span><span class="stage-label">Provider</span></div><p class="stage-description">Execute the model request</p><span id="pipeline-provider-status" class="stage-status">Waiting</span></li>
+          <li class="pipeline-stage"><div class="stage-top"><span class="stage-icon">05</span><span class="stage-label">Metrics</span></div><p class="stage-description">Handle safe telemetry</p><span id="pipeline-metrics-status" class="stage-status">Waiting</span></li>
+        </ol><div id="pipeline-observation" class="pipeline-observation">Run a request to see the returned route, cache, provider, and fallback state.</div></div>
+      </section>
+    </div></section>
 
-    <section class="notes" aria-label="Demo constraints">
-      <div class="notice"><strong>EXACT CACHE:</strong> repeat the same effective request to reuse a cached response. Different wording intentionally produces a different cache key.</div>
-      <div class="notice"><strong>PRIVACY:</strong> Demo only — do not submit confidential, personal, or sensitive information. PostgreSQL does not persist raw prompts or generated content. Cached responses may remain in Redis for the configured TTL and may be reused by another request with the same response-affecting identity. Gemini Live sends requests to Google’s Gemini API.</div>
-    </section>
+    <section class="explainer" aria-labelledby="explainer-title"><div class="container"><p class="eyebrow">Under the hood</p><h2 id="explainer-title">How ModelRoute handles a request</h2><p class="explainer-lede">The demo stays approachable while the gateway retains the infrastructure behavior behind every completion.</p>
+      <div class="capability-grid"><article class="capability"><span class="capability-number">01</span><h3>Protect</h3><p>Redis-backed atomic token-bucket rate limiting controls request volume.</p></article><article class="capability"><span class="capability-number">02</span><h3>Route</h3><p>Fixed, cheapest, or latency-aware selection chooses an eligible provider.</p></article><article class="capability"><span class="capability-number">03</span><h3>Cache</h3><p>Redis reuses exact effective requests; different wording creates a different key.</p></article><article class="capability"><span class="capability-number">04</span><h3>Execute reliably</h3><p>Timeout, bounded retry, and provider fallback contain upstream failures.</p></article><article class="capability"><span class="capability-number">05</span><h3>Observe</h3><p>PostgreSQL stores request telemetry without raw prompt or response content.</p></article></div>
+      <div class="system-map" aria-label="ModelRoute system architecture"><div class="map-node">Client</div><div class="map-arrow" aria-hidden="true">→</div><div class="map-node map-core">FastAPI ModelRoute<small>rate limiter · router · exact cache · providers</small></div><div class="map-arrow" aria-hidden="true">→</div><div class="map-node">Redis &amp; PostgreSQL</div></div>
+      <div class="privacy-note"><span class="notice-icon" aria-hidden="true">i</span><span><strong>Public demo privacy:</strong> do not submit confidential, personal, or sensitive information. PostgreSQL does not persist raw prompts or generated content. Successful cached responses may remain temporarily in Redis for the configured cache TTL and may be reused by an exact response-affecting request.</span></div>
+    </div></section>
   </main>
+  <footer class="footer"><div class="container footer-inner"><span>ModelRoute · LLM Gateway &amp; Observability</span><span>Explore the <a href="/dashboard">metrics dashboard</a> or <a href="/docs">API documentation</a>.</span></div></footer>
 
   <script>
     (() => {
@@ -235,31 +334,21 @@
       const mockModeButton = document.getElementById("mock-mode");
       const geminiModeButton = document.getElementById("gemini-mode");
       const requestState = document.getElementById("request-state");
+      const responseRegion = document.getElementById("response-region");
       const errorBox = document.getElementById("request-error");
       const emptyState = document.getElementById("empty-state");
       const result = document.getElementById("result");
       const cacheBadge = document.getElementById("cache-badge");
+      const responseFieldIds = ["response-content", "provider", "model", "latency", "fallback", "input-tokens", "output-tokens", "request-id"];
       let providerMode = "mock";
       let lastSuccessfulPayload = null;
       let inFlight = false;
 
-      function createClientId() {
-        if (globalThis.crypto && typeof globalThis.crypto.randomUUID === "function") return globalThis.crypto.randomUUID();
-        return `demo-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
-      }
-      function getClientId() {
-        try {
-          let clientId = localStorage.getItem(storageKey);
-          if (!clientId) { clientId = createClientId(); localStorage.setItem(storageKey, clientId); }
-          return clientId;
-        } catch (_error) { return createClientId(); }
-      }
+      function createClientId() { if (globalThis.crypto && typeof globalThis.crypto.randomUUID === "function") return globalThis.crypto.randomUUID(); return `demo-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`; }
+      function getClientId() { try { let clientId = localStorage.getItem(storageKey); if (!clientId) { clientId = createClientId(); localStorage.setItem(storageKey, clientId); } return clientId; } catch (_error) { return createClientId(); } }
       const clientId = getClientId();
 
-      function setRequestState(state) {
-        requestState.textContent = state;
-        requestState.className = `state-display ${state.toLowerCase()}`;
-      }
+      function setRequestState(state) { requestState.textContent = state; requestState.className = `request-state ${state.toLowerCase()}`; }
       function setProviderMode(mode) {
         if (mode === "gemini" && !geminiDemoAvailable) return;
         providerMode = mode;
@@ -267,96 +356,73 @@
         mockModeButton.setAttribute("aria-pressed", String(!geminiSelected));
         geminiModeButton.setAttribute("aria-pressed", String(geminiSelected));
         strategyInput.disabled = geminiSelected;
+        document.getElementById("gemini-notice").classList.toggle("hidden", !geminiSelected);
         if (geminiSelected) {
-          strategyInput.value = "fixed";
-          maxTokensInput.max = String(geminiOutputCap);
-          maxTokensInput.value = String(Math.min(Number(maxTokensInput.value), geminiOutputCap));
-          promptInput.maxLength = geminiPromptCap;
-          document.getElementById("strategy-help").textContent = "GEMINI IS PINNED / FIXED ROUTE";
-          document.getElementById("token-help").textContent = `SERVER CAP 1–${geminiOutputCap}`;
-          document.getElementById("mode-note").textContent = "REAL GEMINI API / LOW THINKING / STRICT REDIS QUOTA";
+          strategyInput.value = "fixed"; maxTokensInput.max = String(geminiOutputCap); maxTokensInput.value = String(Math.min(Number(maxTokensInput.value), geminiOutputCap)); promptInput.maxLength = geminiPromptCap;
+          document.getElementById("strategy-help").textContent = "Gemini is pinned to the fixed route.";
+          document.getElementById("token-help").textContent = `Server-enforced range 1–${geminiOutputCap}`;
+          document.getElementById("mode-note").textContent = "Gemini is opt-in and uses the real provider path with strict public quota.";
         } else {
-          strategyInput.disabled = false;
-          maxTokensInput.max = "8192";
-          promptInput.removeAttribute("maxlength");
-          document.getElementById("strategy-help").textContent = "MOCK IS THE PINNED PUBLIC PROVIDER";
-          document.getElementById("token-help").textContent = "PUBLIC RANGE 1–8192";
-          document.getElementById("mode-note").textContent = geminiDemoAvailable ? "SAFE LOCAL SIMULATION / GEMINI AVAILABLE BY OPT-IN" : "SAFE LOCAL SIMULATION / GEMINI LIVE CURRENTLY UNAVAILABLE";
+          strategyInput.disabled = false; maxTokensInput.max = "8192"; promptInput.removeAttribute("maxlength");
+          document.getElementById("strategy-help").textContent = "MockProvider is the pinned public provider.";
+          document.getElementById("token-help").textContent = "Public range 1–8192";
+          document.getElementById("mode-note").textContent = geminiDemoAvailable ? "MockProvider is selected. Gemini Live is available only when you explicitly opt in." : "MockProvider is selected. Gemini Live is currently unavailable.";
         }
       }
-      function currentPayload() {
-        return { prompt: promptInput.value, strategy: providerMode === "gemini" ? "fixed" : strategyInput.value, temperature: Number(document.getElementById("temperature").value), max_tokens: Number(maxTokensInput.value), preferred_provider: providerMode };
-      }
+      function currentPayload() { return { prompt: promptInput.value, strategy: providerMode === "gemini" ? "fixed" : strategyInput.value, temperature: Number(document.getElementById("temperature").value), max_tokens: Number(maxTokensInput.value), preferred_provider: providerMode }; }
       function setLoading(loading) {
-        inFlight = loading;
-        submitButton.disabled = loading;
-        repeatButton.disabled = loading;
-        mockModeButton.disabled = loading;
-        geminiModeButton.disabled = loading || !geminiDemoAvailable;
-        strategyInput.disabled = loading || providerMode === "gemini";
-        submitButton.textContent = loading ? "REQUEST IN FLIGHT…" : "EXECUTE REQUEST";
-        form.setAttribute("aria-busy", String(loading));
+        inFlight = loading; submitButton.disabled = loading; repeatButton.disabled = loading; mockModeButton.disabled = loading; geminiModeButton.disabled = loading || !geminiDemoAvailable; strategyInput.disabled = loading || providerMode === "gemini";
+        submitButton.textContent = loading ? "Sending request…" : "Send request"; form.setAttribute("aria-busy", String(loading)); responseRegion.setAttribute("aria-busy", String(loading));
       }
-      function hideError() { errorBox.textContent = ""; errorBox.classList.add("hidden"); }
-      function showError(message) { errorBox.textContent = message; errorBox.classList.remove("hidden"); }
+      function clearResponseFields() { responseFieldIds.forEach((id) => { document.getElementById(id).textContent = ""; }); }
+      function hideError() { document.getElementById("error-detail").textContent = ""; errorBox.classList.add("hidden"); }
+      function resetPipeline(status = "Waiting") { ["pipeline-rate-status", "pipeline-router-status", "pipeline-cache-status", "pipeline-provider-status", "pipeline-metrics-status"].forEach((id) => { document.getElementById(id).textContent = status; }); }
+      function resetResponseForNewRequest() {
+        hideError(); clearResponseFields(); result.classList.add("hidden"); cacheBadge.classList.add("hidden"); cacheBadge.classList.remove("cache-hit", "cache-miss"); document.getElementById("cache-guidance").classList.add("hidden");
+        emptyState.classList.remove("hidden"); emptyState.classList.add("loading-state"); document.getElementById("empty-title").textContent = "Sending your request…"; document.getElementById("empty-copy").textContent = "ModelRoute is processing this request through the gateway.";
+        resetPipeline("Waiting"); document.getElementById("pipeline-rate-status").textContent = "In progress"; document.getElementById("pipeline-observation").textContent = "Request in progress. Previous response data has been cleared.";
+      }
+      function renderRequestError(message) {
+        clearResponseFields(); result.classList.add("hidden"); emptyState.classList.add("hidden"); emptyState.classList.remove("loading-state"); cacheBadge.classList.add("hidden"); document.getElementById("error-detail").textContent = message; errorBox.classList.remove("hidden");
+        resetPipeline("Not available"); document.getElementById("pipeline-observation").textContent = "This request did not complete. No result from an earlier request is being shown.";
+      }
+      function showNonRequestError(message) { document.getElementById("error-detail").textContent = message; errorBox.classList.remove("hidden"); }
       function errorMessage(status, payload) {
-        if (status === 422) {
-          if (payload && typeof payload.detail === "string") return `HTTP 422 / ${payload.detail}`;
-          const details = Array.isArray(payload && payload.detail) ? payload.detail : [];
-          const messages = details.map((item) => item && item.msg).filter((message) => typeof message === "string");
-          return `HTTP 422 / ${messages.length ? messages.join("; ") : "CHECK REQUEST PARAMETERS"}`;
-        }
-        if (status === 403) return "HTTP 403 / GEMINI LIVE IS NOT ENABLED ON THIS SERVER";
-        if (status === 429 && payload && typeof payload.detail === "string") return `HTTP 429 / ${payload.detail}`;
-        if (status === 429) return "HTTP 429 / REQUEST LIMIT REACHED — RETRY LATER";
-        if (status === 503 && payload && typeof payload.detail === "string") return `HTTP 503 / ${payload.detail}`;
-        if (status === 503) return "HTTP 503 / GATEWAY DEPENDENCY TEMPORARILY UNAVAILABLE";
-        return `HTTP ${status} / GATEWAY REQUEST FAILED`;
+        const detail = payload && typeof payload.detail === "string" ? payload.detail : null;
+        if (status === 422) { if (detail) return detail; const details = Array.isArray(payload && payload.detail) ? payload.detail : []; const messages = details.map((item) => item && item.msg).filter((message) => typeof message === "string"); return messages.length ? messages.join("; ") : "Check the request settings and try again."; }
+        if (status === 403) return "Gemini Live is not enabled on this server.";
+        if (status === 429) return detail || "The request limit was reached. Please try again later.";
+        if (status === 503) return detail || "A gateway dependency is temporarily unavailable.";
+        return `The gateway returned HTTP ${status}. Please try again.`;
+      }
+      function updatePipeline(data, payload) {
+        document.getElementById("pipeline-rate-status").textContent = "Accepted"; document.getElementById("pipeline-router-status").textContent = String(payload.strategy).toUpperCase(); document.getElementById("pipeline-cache-status").textContent = data.cache_hit ? "HIT" : "MISS"; document.getElementById("pipeline-provider-status").textContent = String(data.provider); document.getElementById("pipeline-metrics-status").textContent = "See dashboard";
+        document.getElementById("pipeline-observation").textContent = [`Route: ${String(payload.strategy).toUpperCase()}`, `Cache: ${data.cache_hit ? "HIT" : "MISS"}`, `Provider: ${String(data.provider)}`, `Fallback: ${data.fallback_used ? "YES" : "NO"}`].join("  ·  ");
       }
       function renderResponse(data, payload) {
-        emptyState.classList.add("hidden");
-        result.classList.remove("hidden");
-        cacheBadge.classList.remove("hidden", "cache-hit", "cache-miss");
-        cacheBadge.classList.add(data.cache_hit ? "cache-hit" : "cache-miss");
-        cacheBadge.textContent = data.cache_hit ? "CACHE HIT" : "CACHE MISS";
-        document.getElementById("response-content").textContent = data.content;
-        document.getElementById("provider").textContent = data.provider;
-        document.getElementById("model").textContent = data.model;
-        document.getElementById("latency").textContent = `${Number(data.latency_ms).toFixed(2)} ms`;
-        document.getElementById("fallback").textContent = data.fallback_used ? "YES" : "NO";
-        document.getElementById("input-tokens").textContent = String(data.input_tokens);
-        document.getElementById("output-tokens").textContent = String(data.output_tokens);
-        document.getElementById("request-id").textContent = data.request_id;
-        document.getElementById("pipeline-observation").textContent = [`OBSERVED / ROUTE ${String(payload.strategy).toUpperCase()}`, `CACHE ${data.cache_hit ? "HIT" : "MISS"}`, `PROVIDER ${String(data.provider).toUpperCase()}`, `FALLBACK ${data.fallback_used ? "YES" : "NO"}`].join("  ·  ");
+        hideError(); emptyState.classList.add("hidden"); emptyState.classList.remove("loading-state"); result.classList.remove("hidden"); cacheBadge.classList.remove("hidden", "cache-hit", "cache-miss"); cacheBadge.classList.add(data.cache_hit ? "cache-hit" : "cache-miss"); cacheBadge.textContent = data.cache_hit ? "CACHE HIT" : "CACHE MISS";
+        document.getElementById("response-content").textContent = data.content; document.getElementById("provider").textContent = data.provider; document.getElementById("model").textContent = data.model; document.getElementById("latency").textContent = `${Number(data.latency_ms).toFixed(2)} ms`; document.getElementById("fallback").textContent = data.fallback_used ? "Yes" : "No"; document.getElementById("input-tokens").textContent = String(data.input_tokens); document.getElementById("output-tokens").textContent = String(data.output_tokens); document.getElementById("request-id").textContent = data.request_id;
+        document.getElementById("cache-guidance").classList.remove("hidden");
+        if (data.cache_hit) { document.getElementById("cache-guidance-title").textContent = "Served from Redis exact cache"; document.getElementById("cache-guidance-text").textContent = "Different wording intentionally creates a new cache key."; }
+        else { document.getElementById("cache-guidance-title").textContent = "Want to see exact-response caching?"; document.getElementById("cache-guidance-text").textContent = "Repeat the exact request to reuse this response when the effective request identity matches."; }
+        updatePipeline(data, payload);
       }
       async function sendRequest(payload) {
         if (inFlight) return;
-        hideError(); setRequestState("SENDING"); setLoading(true);
+        resetResponseForNewRequest(); setRequestState("Sending"); setLoading(true);
         try {
           const response = await fetch(endpoint, { method: "POST", headers: { "Content-Type": "application/json", "X-Client-ID": clientId }, body: JSON.stringify(payload) });
-          let data = null;
-          try { data = await response.json(); } catch (_error) { data = null; }
-          if (!response.ok) { showError(errorMessage(response.status, data)); setRequestState("ERROR"); return; }
-          lastSuccessfulPayload = JSON.parse(JSON.stringify(payload));
-          renderResponse(data, payload);
-          setRequestState("COMPLETE");
-        } catch (_error) {
-          showError("NETWORK ERROR / THE GATEWAY COULD NOT BE REACHED"); setRequestState("ERROR");
-        } finally { setLoading(false); }
+          let data = null; try { data = await response.json(); } catch (_error) { data = null; }
+          if (!response.ok) { renderRequestError(errorMessage(response.status, data)); setRequestState("Error"); return; }
+          lastSuccessfulPayload = JSON.parse(JSON.stringify(payload)); renderResponse(data, payload); setRequestState("Complete");
+        } catch (_error) { renderRequestError("The gateway could not be reached. Check your connection and try again."); setRequestState("Error"); }
+        finally { setLoading(false); }
       }
-      async function copyValue(value, button) {
-        try {
-          await navigator.clipboard.writeText(value);
-          const original = button.textContent;
-          button.textContent = "COPIED";
-          globalThis.setTimeout(() => { button.textContent = original; }, 1200);
-        } catch (_error) { showError("COPY FAILED / SELECT THE VALUE MANUALLY"); }
-      }
+      async function copyValue(value, button) { try { await navigator.clipboard.writeText(value); const original = button.textContent; button.textContent = "Copied"; globalThis.setTimeout(() => { button.textContent = original; }, 1200); } catch (_error) { showNonRequestError("Copy failed. Select the value and copy it manually."); } }
 
       form.addEventListener("submit", (event) => { event.preventDefault(); if (form.reportValidity()) sendRequest(currentPayload()); });
       promptInput.addEventListener("keydown", (event) => { if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) { event.preventDefault(); form.requestSubmit(); } });
-      mockModeButton.addEventListener("click", () => setProviderMode("mock"));
-      geminiModeButton.addEventListener("click", () => setProviderMode("gemini"));
+      mockModeButton.addEventListener("click", () => setProviderMode("mock")); geminiModeButton.addEventListener("click", () => setProviderMode("gemini"));
       repeatButton.addEventListener("click", () => { if (lastSuccessfulPayload) sendRequest(JSON.parse(JSON.stringify(lastSuccessfulPayload))); });
       document.getElementById("copy-response").addEventListener("click", (event) => { copyValue(document.getElementById("response-content").textContent, event.currentTarget); });
       document.getElementById("copy-request-id").addEventListener("click", (event) => { copyValue(document.getElementById("request-id").textContent, event.currentTarget); });

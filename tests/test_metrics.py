@@ -307,4 +307,43 @@ def test_dashboard_renders_summary_without_external_assets(app_factory) -> None:
     assert 'const recentEndpoint = "/v1/metrics/recent?limit=20"' in response_value.text
     assert "const refreshIntervalMs = 15000" in response_value.text
     assert "Request ID" in response_value.text
+    assert "Metrics up to date" in response_value.text
+    assert "Refresh unavailable — showing last data" in response_value.text
+    assert "Raw prompts and generated content are not persisted" in response_value.text
     assert "https://" not in response_value.text
+
+
+class DashboardMetricsWithPrivateExtras(DashboardMetrics):
+    async def recent(self, limit=20):
+        del limit
+        return [
+            {
+                "timestamp": "2026-08-24T12:00:00Z",
+                "status": "success",
+                "provider": "mock",
+                "model": "mock-model",
+                "routing_strategy": "fixed",
+                "latency_ms": 4.2,
+                "cache_hit": False,
+                "fallback_used": False,
+                "input_tokens": 3,
+                "output_tokens": 2,
+                "estimated_cost_usd": 0,
+                "request_id": "safe-request-id",
+                "prompt": "private prompt must never render",
+                "content": "private generated content must never render",
+            }
+        ]
+
+
+def test_dashboard_ignores_prompt_and_content_even_if_metrics_mapping_has_extras(
+    app_factory,
+) -> None:
+    application = app_factory(metrics_service=DashboardMetricsWithPrivateExtras())
+
+    response_value = request(application, "GET", "/dashboard")
+
+    assert response_value.status_code == 200
+    assert "safe-request-id" in response_value.text
+    assert "private prompt must never render" not in response_value.text
+    assert "private generated content must never render" not in response_value.text
