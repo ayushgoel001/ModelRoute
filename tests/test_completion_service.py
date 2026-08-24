@@ -1,4 +1,5 @@
 import asyncio
+import logging
 
 import pytest
 
@@ -6,10 +7,12 @@ from app.api.schemas import ChatCompletionRequest
 from app.exceptions import (
     AllProvidersFailedError,
     ProviderAuthenticationError,
+    ProviderRateLimitError,
     ProviderRequestError,
     ProviderTimeoutError,
+    ProviderUnavailableError,
 )
-from app.providers.base import GenerationRequest
+from app.providers.base import GenerationRequest, ProviderResult
 from app.services.cache import ResponseCache
 from app.services.completion_service import CompletionService
 from app.services.latency import LatencyTracker
@@ -220,3 +223,90 @@ def test_retry_delay_is_injected_without_real_sleep() -> None:
     complete(service([provider], FakeRedis(), sleep=record_delay))
 
     assert delays == [0.01]
+
+
+@pytest.mark.parametrize(
+    "error_type",
+    [ProviderTimeoutError, ProviderRateLimitError, ProviderUnavailableError],
+)
+def test_provider_failure_log_uses_safe_normalized_category(
+    caplog,
+    error_type,
+) -> None:
+    secret_message = "secret-api-key-value"
+    secret_prompt = "private prompt that must not be logged"
+    provider = FakeProvider(
+        "gemini",
+        effects=[error_type("gemini", secret_message)],
+    )
+    request = ChatCompletionRequest(
+        prompt=secret_prompt,
+        strategy="fixed",
+        max_tokens=20,
+    )
+
+    with caplog.at_level(logging.WARNING, logger="app.services.completion_service"):
+        with pytest.raises(AllProvidersFailedError):
+            asyncio.run(
+                service([provider], FakeRedis(), max_retries=0).complete(request)
+            )
+
+    assert caplog.messages == [
+        (
+            "Provider gemini failed; "
+            f"category={error_type.__name__}; retryable=True; attempt=1"
+        )
+    ]
+    assert secret_message not in caplog.text
+    assert secret_prompt not in caplog.text
+
+
+def test_retry_and_fallback_logs_each_attempt_without_sensitive_data(caplog) -> None:
+    secret_message = "authorization-header-secret"
+    secret_prompt = "confidential retry prompt"
+    secret_content = "generated content must not enter diagnostics"
+    primary = FakeProvider(
+        "gemini",
+        effects=[
+            ProviderTimeoutError("gemini", secret_message),
+            ProviderTimeoutError("gemini", secret_message),
+        ],
+    )
+    fallback = FakeProvider(
+        "mock",
+        effects=[
+            ProviderResult(
+                content=secret_content,
+                provider="mock",
+                model="mock-model",
+                input_tokens=3,
+                output_tokens=2,
+            )
+        ],
+    )
+    request = ChatCompletionRequest(
+        prompt=secret_prompt,
+        strategy="fixed",
+        max_tokens=20,
+    )
+
+    with caplog.at_level(logging.WARNING, logger="app.services.completion_service"):
+        response = asyncio.run(
+            service(
+                [primary, fallback],
+                FakeRedis(),
+                max_retries=1,
+                sleep=lambda _: _done(),
+            ).complete(request)
+        )
+
+    assert response.provider == "mock"
+    assert response.fallback_used is True
+    assert (primary.calls, fallback.calls) == (2, 1)
+    assert caplog.messages == [
+        "Provider gemini failed; category=ProviderTimeoutError; retryable=True; attempt=1",
+        "Provider gemini failed; category=ProviderTimeoutError; retryable=True; attempt=2",
+    ]
+    assert secret_message not in caplog.text
+    assert secret_prompt not in caplog.text
+    assert secret_content not in caplog.text

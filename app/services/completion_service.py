@@ -150,10 +150,12 @@ class CompletionService:
                 try:
                     result = await provider.generate(provider_request)
                 except ProviderError as exc:
-                    last_error_category = type(exc).__name__
+                    error_category = type(exc).__name__
+                    last_error_category = error_category
                     logger.warning(
-                        "Provider %s failed; retryable=%s attempt=%s",
+                        "Provider %s failed; category=%s; retryable=%s; attempt=%s",
                         provider.metadata.name,
+                        error_category,
                         exc.retryable,
                         attempt + 1,
                     )
